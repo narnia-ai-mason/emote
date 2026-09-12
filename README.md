@@ -10,6 +10,8 @@ Emote lives in the Mac menu bar. While you’re writing, press a hotkey and five
 
 Pick one with the keyboard. It drops into whatever you were already typing.
 
+https://github.com/user-attachments/assets/3d642a04-41bc-404b-9cdb-40dd79dc96c6
+
 ## Install
 
 1. Download the latest `Emote-*.dmg` from [Releases](https://github.com/narnia-ai-mason/emote/releases).
