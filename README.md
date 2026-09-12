@@ -26,7 +26,9 @@ Set a tone if you want the suggestions warmer, drier, or a little extra.
 
 ## Models
 
-Emote talks to [OpenRouter](https://openrouter.ai). **Auto routing** uses whatever free model is available. **Nex N2.5 Mini** is a good pinned free choice. You can also paste any other model id.
+Emote talks to [OpenRouter](https://openrouter.ai). **Auto routing** (`openrouter/free`) may pick a different free model each time. Pin **Nex N2.5 Mini** — or paste any other model id — for more consistent suggestions.
+
+Temperature in Settings also changes how varied the picks are. Lower is more consistent. Higher is more varied. Even at 0, results can still change.
 
 Some free models stay blocked unless you allow free-model training in [OpenRouter privacy settings](https://openrouter.ai/settings/privacy). That setting is on your account, not per API key.
 

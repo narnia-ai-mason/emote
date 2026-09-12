@@ -131,6 +131,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let apiKey = settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
     let model = settings.model
     let fallbacks = settings.fallbackModels
+    let temperature = settings.temperature
     let keyword = clipped(query.focus, limit: 80)
     let context = query.context.map { clipped($0, limit: 240) }
     let queryTone = query.tone
@@ -144,7 +145,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             retriever: OpenRouterEmojiRecommender(
               client: OpenRouterClient(apiKey: apiKey),
               model: model,
-              fallbackModels: fallbacks
+              fallbackModels: fallbacks,
+              temperature: temperature
             )
           ).recommend(
             for: keyword,

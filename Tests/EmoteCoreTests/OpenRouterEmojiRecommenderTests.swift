@@ -121,12 +121,32 @@ final class OpenRouterEmojiRecommenderTests: XCTestCase {
     )
   }
 
+  func testSendsTheConfiguredTemperature() async throws {
+    let client = StubChatClient(
+      responses: [
+        ChatCompletionResponse(model: "test", content: #"{"emojis":["🎉"]}"#)
+      ]
+    )
+    _ = try await OpenRouterEmojiRecommender(
+      client: client,
+      temperature: 0
+    ).candidates(RetrievalQuery(focus: "합격", kind: .word), limit: 5)
+
+    XCTAssertEqual(client.requests[0].temperature, 0)
+  }
+
+  func testClampsTemperatureToTheUnitInterval() {
+    XCTAssertEqual(OpenRouterEmojiRecommender.clampedTemperature(-1), 0)
+    XCTAssertEqual(OpenRouterEmojiRecommender.clampedTemperature(1.8), 1)
+  }
+
   func testLiveFactoryUsesDefaultModelWhenNoneIsConfigured() throws {
     let recommender = try OpenRouterEmojiRecommender.live(
       environment: ["OPENROUTER_API_KEY": "sk-test"]
     )
     XCTAssertEqual(recommender.model, OpenRouterEmojiRecommender.defaultModel)
     XCTAssertEqual(recommender.fallbackModels, [])
+    XCTAssertEqual(recommender.temperature, OpenRouterEmojiRecommender.defaultTemperature)
   }
 
   func testLiveFactoryRequiresAnAPIKey() {
@@ -143,6 +163,7 @@ final class OpenRouterEmojiRecommenderTests: XCTestCase {
         "OPENROUTER_API_KEY": "sk-test",
         "OPENROUTER_MODEL": "openai/gpt-4.1-mini",
         "OPENROUTER_FALLBACK_MODELS": "google/gemma-4-31b-it:free, openrouter/free",
+        "EMOTE_TEMPERATURE": "0",
       ]
     )
     XCTAssertEqual(recommender.model, "openai/gpt-4.1-mini")
@@ -150,6 +171,7 @@ final class OpenRouterEmojiRecommenderTests: XCTestCase {
       recommender.fallbackModels,
       ["google/gemma-4-31b-it:free", "openrouter/free"]
     )
+    XCTAssertEqual(recommender.temperature, 0)
   }
 }
 

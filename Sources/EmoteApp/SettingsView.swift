@@ -43,12 +43,31 @@ struct SettingsView: View {
           .font(.callout)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
+        if store.model == OpenRouterEmojiRecommender.defaultModel {
+          Text("Auto routing may pick a different free model each time. Pin a model for more consistent suggestions.")
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
 
         Link(
           "OpenRouter privacy settings",
           destination: URL(string: "https://openrouter.ai/settings/privacy")!
         )
         .font(.callout)
+      }
+
+      settingsField("Temperature") {
+        HStack(spacing: 10) {
+          Slider(value: $store.temperature, in: 0...1, step: 0.1)
+          Text(store.temperature, format: .number.precision(.fractionLength(1)))
+            .font(.body.monospacedDigit())
+            .frame(width: 28, alignment: .trailing)
+        }
+        Text("Lower is more consistent. Higher is more varied. Even at 0, results can still change.")
+          .font(.callout)
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
       }
 
       settingsField("Tone") {

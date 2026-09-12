@@ -7,21 +7,25 @@ public struct OpenRouterEmojiRecommender: EmojiCandidateRetrieving {
     "openrouter/free",
     "nex-agi/nex-n2.5-mini:free",
   ]
+  public static let defaultTemperature = 0.2
 
   private let client: any ChatCompleting
   public let model: String
   public let fallbackModels: [String]
+  public let temperature: Double
   private let debugHandler: (@Sendable (String) -> Void)?
 
   public init(
     client: any ChatCompleting,
     model: String = OpenRouterEmojiRecommender.defaultModel,
     fallbackModels: [String] = OpenRouterEmojiRecommender.defaultFallbackModels,
+    temperature: Double = OpenRouterEmojiRecommender.defaultTemperature,
     debugHandler: (@Sendable (String) -> Void)? = nil
   ) {
     self.client = client
     self.model = model
     self.fallbackModels = fallbackModels
+    self.temperature = Self.clampedTemperature(temperature)
     self.debugHandler = debugHandler
   }
 
@@ -41,10 +45,14 @@ public struct OpenRouterEmojiRecommender: EmojiCandidateRetrieving {
       .trimmingCharacters(in: .whitespacesAndNewlines)
     let resolvedModel = (model?.isEmpty == false) ? model! : defaultModel
 
+    let temperature = environment["EMOTE_TEMPERATURE"]
+      .flatMap { Double($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
+
     return OpenRouterEmojiRecommender(
       client: OpenRouterClient(apiKey: apiKey),
       model: resolvedModel,
       fallbackModels: modelList(environment["OPENROUTER_FALLBACK_MODELS"]),
+      temperature: temperature ?? defaultTemperature,
       debugHandler: debugHandler
     )
   }
@@ -116,7 +124,8 @@ public struct OpenRouterEmojiRecommender: EmojiCandidateRetrieving {
             extraInstruction: extraInstruction
           )
         ),
-      ]
+      ],
+      temperature: temperature
     )
     debugHandler?("Requesting \(model) via OpenRouter.")
     do {
@@ -127,11 +136,9 @@ public struct OpenRouterEmojiRecommender: EmojiCandidateRetrieving {
     } catch {
       for fallback in fallbackModels where fallback != model {
         debugHandler?("\(model) failed; trying \(fallback).")
-        let retry = ChatCompletionRequest(
-          model: fallback,
-          fallbackModels: [],
-          messages: request.messages
-        )
+        var retry = request
+        retry.model = fallback
+        retry.fallbackModels = []
         do {
           return finish(try await client.complete(retry))
         } catch {
@@ -176,6 +183,10 @@ public struct OpenRouterEmojiRecommender: EmojiCandidateRetrieving {
       "Return JSON only in this shape: {\"emojis\":[\"<emoji>\",\"<emoji>\",\"<emoji>\"]}"
     )
     return lines.joined(separator: "\n")
+  }
+
+  public static func clampedTemperature(_ value: Double) -> Double {
+    min(max(value, 0), 1)
   }
 
   private static func modelList(_ raw: String?) -> [String] {

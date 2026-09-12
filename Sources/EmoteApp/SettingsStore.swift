@@ -22,6 +22,17 @@ final class SettingsStore: ObservableObject {
     didSet { persistHotkey() }
   }
 
+  @Published var temperature: Double {
+    didSet {
+      let clamped = OpenRouterEmojiRecommender.clampedTemperature(temperature)
+      if clamped != temperature {
+        temperature = clamped
+        return
+      }
+      UserDefaults.standard.set(clamped, forKey: Keys.temperature)
+    }
+  }
+
   var fallbackModels: [String] {
     let stored = UserDefaults.standard.string(forKey: Keys.fallbacks)?
       .split(separator: ",")
@@ -48,6 +59,13 @@ final class SettingsStore: ObservableObject {
     } else {
       hotkey = .default
     }
+    if defaults.object(forKey: Keys.temperature) != nil {
+      temperature = OpenRouterEmojiRecommender.clampedTemperature(
+        defaults.double(forKey: Keys.temperature)
+      )
+    } else {
+      temperature = OpenRouterEmojiRecommender.defaultTemperature
+    }
   }
 
   private func persistHotkey() {
@@ -61,6 +79,7 @@ final class SettingsStore: ObservableObject {
     static let model = "emote.model"
     static let tone = "emote.tone"
     static let hotkey = "emote.hotkey"
+    static let temperature = "emote.temperature"
     static let fallbacks = "emote.fallbacks"
   }
 }
