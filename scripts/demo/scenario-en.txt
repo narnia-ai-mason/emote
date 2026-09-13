@@ -1,0 +1,48 @@
+# Emote demo — English
+# In Notes the first line becomes the title.
+# Syntax is in the header of scripts/demo/driver.swift. \s is a space, \n is Return.
+# The emojis after pick are in order of preference; the first one the HUD shows wins.
+cps 14
+
+# 1. At the end of a sentence (after the period and a space) it reads the whole sentence.
+type Hi, I'm Mason.\s
+fn
+pick 👋 🙋 🙌 😄 🙂 😊 🤗
+
+# 2. End of a sentence again.
+type \nI made a small Mac app called Emote. While you write, press the hotkey and a few emojis pop up next to your cursor.\s
+fn
+pick ✨ 🎉 🪄 💫 😄 🙂 😊 ⌨️ ✍️ 🖊️
+
+# 3. Type a heading, jump to the start of the line, and it goes in front of the heading.
+type \n\n
+key shift+cmd+h
+type How to use it
+key cmd+left
+fn
+pick 💡 👉 📖 ❓ 🤔 ✍️ 🧭 📝 📌 🔍 📚 🎯
+type \s
+key cmd+right
+
+# 4. Right after a word (no space) it looks at that word.
+type \nPress it at the end of a sentence and it reads the whole sentence.\nPress it right after a word and it looks at that word. For example, coffee
+fn
+pick ☕ 🍵
+
+# 5. Select a word and it replaces the word.
+type \sor pizza.\nSelect a word and it replaces the word.\nMade with love
+key shift+alt+left
+fn
+pick ❤️ 💖 💕 🥰 💗 💝 💞 🧡 💛 💚 💙 💜 🩷 ❤️‍🔥 💌 🫶 😍
+
+# 6. Press the hotkey again without choosing and a new set appears.
+type \nNothing you like? Press the hotkey again for a new set.\s
+fn
+again
+pick 🔄 🔁 🎲 🆕 ✨ 👀 👍 👌 🙂 😊
+
+# 7. Wrap up.
+type \n\nGrab it from the README and give it a try.\s
+fn
+pick 🚀 📦 📖 ✅ 👍 📘 💻
+wait 2500
