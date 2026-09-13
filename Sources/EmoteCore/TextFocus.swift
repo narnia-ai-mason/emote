@@ -1,4 +1,5 @@
 import Foundation
+import NaturalLanguage
 
 public struct TextFocus: Equatable, Sendable {
   public var kind: EmojiFocusKind
@@ -81,12 +82,8 @@ public struct TextFocus: Equatable, Sendable {
 }
 
 private func sentenceContaining(utf16 location: Int, in text: String) -> String {
-  let ranges = sentenceUTF16Ranges(in: text)
-  if let range = ranges.first(where: { $0.contains(location) || $0.upperBound == location }) {
+  if let range = sentenceUTF16Range(at: location, in: text) {
     return utf16Substring(text, range).trimmingCharacters(in: .whitespacesAndNewlines)
-  }
-  if let last = ranges.last, location >= last.upperBound {
-    return utf16Substring(text, last).trimmingCharacters(in: .whitespacesAndNewlines)
   }
   return text.trimmingCharacters(in: .whitespacesAndNewlines)
 }
@@ -124,10 +121,16 @@ private func sentenceUTF16Ranges(in text: String) -> [Range<Int>] {
   return ranges.filter { !$0.isEmpty }
 }
 
+private func sentenceUTF16Range(at location: Int, in text: String) -> Range<Int>? {
+  let ranges = sentenceUTF16Ranges(in: text)
+  if let range = ranges.first(where: { $0.contains(location) }) {
+    return range
+  }
+  return ranges.last(where: { $0.upperBound <= location })
+}
+
 private func isAtSentenceStart(cursorUTF16: Int, sentence: String, in text: String) -> Bool {
-  guard let range = sentenceUTF16Ranges(in: text).first(where: {
-    $0.contains(cursorUTF16) || $0.upperBound == cursorUTF16
-  }) else {
+  guard let range = sentenceUTF16Range(at: cursorUTF16, in: text) else {
     return cursorUTF16 == 0
   }
 
@@ -146,53 +149,87 @@ private func caretAnchor(at location: Int, end: Int) -> Range<Int> {
 }
 
 private func wordAround(utf16 location: Int, in text: String) -> (word: String, range: Range<Int>)? {
-  let scalars = Array(text.utf16)
-  guard !scalars.isEmpty else {
+  guard let probe = characterIndexBeforeCursor(utf16: location, in: text) else {
     return nil
   }
 
-  var index = min(max(location, 0), scalars.count)
-  if index > 0 {
-    index -= 1
+  let tokenizer = NLTokenizer(unit: .word)
+  tokenizer.string = text
+  if let language = NLLanguageRecognizer.dominantLanguage(for: text) {
+    tokenizer.setLanguage(language)
   }
 
-  while index > 0, isWhitespaceUTF16(scalars[index]) {
-    index -= 1
-  }
-
-  guard index >= 0, index < scalars.count, isWordUTF16(scalars[index]) else {
+  guard let token = tokenizer.tokens(for: text.startIndex..<text.endIndex).first(where: { $0.contains(probe) })
+  else {
     return nil
   }
 
-  var lower = index
-  var upper = index + 1
-  while lower > 0, isWordUTF16(scalars[lower - 1]) {
-    lower -= 1
+  let word = String(text[token])
+  guard !word.isEmpty else {
+    return nil
   }
-  while upper < scalars.count, isWordUTF16(scalars[upper]) {
-    upper += 1
+  return (word, utf16Range(of: token, in: text))
+}
+
+private func characterIndexBeforeCursor(utf16 location: Int, in text: String) -> String.Index? {
+  guard !text.isEmpty else {
+    return nil
   }
-  return (utf16Substring(text, lower..<upper), lower..<upper)
+
+  let clamped = min(max(location, 0), text.utf16.count)
+  guard let cursor = stringIndex(ofUTF16: clamped, in: text) else {
+    return nil
+  }
+
+  var index = cursor
+  if index == text.startIndex {
+    return text[index].isWhitespace ? nil : index
+  }
+
+  index = text.index(before: index)
+  while text[index].isWhitespace {
+    if index == text.startIndex {
+      return nil
+    }
+    index = text.index(before: index)
+  }
+  return index
 }
 
 private func isSentenceTerminator(_ character: Character) -> Bool {
-  character == "." || character == "!" || character == "?" || character == "。" || character == "…"
+  character == "."
+    || character == "!"
+    || character == "?"
+    || character == "。"
+    || character == "…"
+    || character == "！"
+    || character == "？"
 }
 
-private func isWordUTF16(_ unit: UInt16) -> Bool {
-  let scalar = UnicodeScalar(unit)
-  if let scalar {
-    let character = Character(scalar)
-    return character.isLetter || character.isNumber
+private func stringIndex(ofUTF16 offset: Int, in text: String) -> String.Index? {
+  let view = text.utf16
+  guard let utf16Index = view.index(view.startIndex, offsetBy: offset, limitedBy: view.endIndex) else {
+    return nil
   }
-  return true
+  if let index = String.Index(utf16Index, within: text) {
+    return index
+  }
+
+  var probe = utf16Index
+  while probe > view.startIndex {
+    probe = view.index(before: probe)
+    if let index = String.Index(probe, within: text) {
+      return index
+    }
+  }
+  return text.startIndex
 }
 
-private func isWhitespaceUTF16(_ unit: UInt16) -> Bool {
-  guard let scalar = UnicodeScalar(unit) else {
-    return false
-  }
-  return CharacterSet.whitespacesAndNewlines.contains(scalar)
+private func utf16Range(of range: Range<String.Index>, in text: String) -> Range<Int> {
+  let view = text.utf16
+  let lower = view.distance(from: view.startIndex, to: range.lowerBound)
+  let upper = view.distance(from: view.startIndex, to: range.upperBound)
+  return lower..<upper
 }
 
 private func utf16Substring(_ text: String, _ range: Range<Int>) -> String {

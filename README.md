@@ -32,7 +32,7 @@ Then go to any text field and press **⌃⌘E**. You can change that shortcut in
 
 Tab or the arrow keys move. Enter inserts. Esc dismisses.
 
-If the caret is in a word, Emote suggests for that word. At the start of a sentence, it suggests for the whole line. Select a word to replace it.
+If the caret is in a word, Emote suggests for that word. Word boundaries follow macOS, so Japanese, Chinese, and other languages without spaces still focus on the word by the cursor — not the whole run of characters. At the start of a sentence, it suggests for the whole line. Select a word to replace it.
 
 Set a tone if you want the suggestions warmer, drier, or a little extra.
 

@@ -58,6 +58,37 @@ final class TextFocusTests: XCTestCase {
   func testEmptyTextReturnsNil() {
     XCTAssertNil(TextFocus.resolve(text: "   ", selectedUTF16: 0..<0))
   }
+
+  func testJapaneseCursorUsesTheWordNotTheWholeRun() {
+    let text = "今日は良い天気です"
+    let cursor = utf16Offset(after: "天気", in: text)
+    let focus = TextFocus.resolve(text: text, selectedUTF16: cursor..<cursor)
+
+    XCTAssertEqual(focus?.kind, .word)
+    XCTAssertEqual(focus?.focus, "天気")
+    XCTAssertEqual(focus?.sentence, text)
+    XCTAssertNotEqual(focus?.focus, text)
+  }
+
+  func testChineseCursorUsesTheWordNotTheWholeRun() {
+    let text = "我今天很开心"
+    let cursor = utf16Offset(after: "今天", in: text)
+    let focus = TextFocus.resolve(text: text, selectedUTF16: cursor..<cursor)
+
+    XCTAssertEqual(focus?.kind, .word)
+    XCTAssertEqual(focus?.focus, "今天")
+    XCTAssertEqual(focus?.sentence, text)
+    XCTAssertNotEqual(focus?.focus, text)
+  }
+
+  func testFullwidthTerminatorsStartTheNextSentence() {
+    let text = "嬉しい！今日は"
+    let cursor = utf16Offset(of: "今日", in: text)
+    let focus = TextFocus.resolve(text: text, selectedUTF16: cursor..<cursor)
+
+    XCTAssertEqual(focus?.kind, .sentence)
+    XCTAssertEqual(focus?.focus, "今日は")
+  }
 }
 
 private func utf16Offset(of needle: String, in text: String) -> Int {

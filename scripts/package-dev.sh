@@ -3,7 +3,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-version="1.2.1-dev"
+version="1.3.0-dev"
 root=".build/dev-root"
 app="$root/Emote Dev.app"
 dmg="dist/Emote-${version}.dmg"
@@ -25,7 +25,7 @@ fi
 /usr/libexec/PlistBuddy -c "Set :CFBundleName Emote Dev" "$app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.minsikseo.emote.dev" "$app/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $version" "$app/Contents/Info.plist"
-/usr/libexec/PlistBuddy -c "Set :CFBundleVersion 5" "$app/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion 6" "$app/Contents/Info.plist"
 
 ./scripts/install-icon.sh "$app/Contents/Resources/Emote.icns"
 ln -s /Applications "$root/Applications"
