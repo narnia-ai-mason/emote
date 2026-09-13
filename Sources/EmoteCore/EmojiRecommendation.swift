@@ -56,6 +56,8 @@ public enum EmojiRecommendationError: Error, Equatable, LocalizedError {
   case emptyQuery
   case insufficientCandidates(Int)
   case missingAPIKey
+  case notConfigured(String)
+  case onDeviceUnavailable(String)
   case emptyModelResponse
   case invalidModelResponse(String)
   case requestFailed(String)
@@ -68,6 +70,10 @@ public enum EmojiRecommendationError: Error, Equatable, LocalizedError {
       "Expected at least 5 distinct candidates, but retrieved \(count)."
     case .missingAPIKey:
       "Set OPENROUTER_API_KEY in the environment or a .env file."
+    case .notConfigured(let detail):
+      detail
+    case .onDeviceUnavailable(let detail):
+      detail
     case .emptyModelResponse:
       "The model returned an empty response."
     case .invalidModelResponse(let detail):
@@ -75,5 +81,12 @@ public enum EmojiRecommendationError: Error, Equatable, LocalizedError {
     case .requestFailed(let detail):
       detail
     }
+  }
+}
+
+extension Duration {
+  var milliseconds: Int {
+    let parts = components
+    return Int(parts.seconds * 1000 + parts.attoseconds / 1_000_000_000_000_000)
   }
 }

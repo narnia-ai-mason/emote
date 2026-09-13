@@ -80,7 +80,7 @@ public struct OpenRouterEmojiRecommender: EmojiCandidateRetrieving {
         let retry = try await complete(
           query: query,
           count: limit,
-          extraInstruction: retryInstruction(missing: limit),
+          extraInstruction: EmojiRecommendationPrompt.retryInstruction(missing: limit),
           retryOnEmpty: false
         )
         for recommendation in EmojiResponseParser.recommendations(
@@ -115,13 +115,14 @@ public struct OpenRouterEmojiRecommender: EmojiCandidateRetrieving {
       model: model,
       fallbackModels: fallbackModels,
       messages: [
-        ChatMessage(role: "system", content: Self.systemPrompt),
+        ChatMessage(role: "system", content: EmojiRecommendationPrompt.jsonInstructions),
         ChatMessage(
           role: "user",
-          content: userPrompt(
+          content: EmojiRecommendationPrompt.userPrompt(
             query: query,
             count: count,
-            extraInstruction: extraInstruction
+            extraInstruction: extraInstruction,
+            asksForJSON: true
           )
         ),
       ],
@@ -155,36 +156,6 @@ public struct OpenRouterEmojiRecommender: EmojiCandidateRetrieving {
     return response
   }
 
-  private func userPrompt(
-    query: RetrievalQuery,
-    count: Int,
-    extraInstruction: String?
-  ) -> String {
-    var lines: [String] = []
-    switch query.kind {
-    case .sentence:
-      lines.append("Recommend emojis that best fit this entire sentence.")
-      lines.append("Sentence: \(query.focus)")
-    case .word:
-      lines.append("Recommend emojis that best fit this word in its sentence.")
-      lines.append("Word: \(query.focus)")
-      if let context = query.context, !context.isEmpty {
-        lines.append("Sentence: \(context)")
-      }
-    }
-    if let tone = query.tone, !tone.isEmpty {
-      lines.append("Tone and style: \(tone)")
-    }
-    lines.append("Suggest \(count) distinct, commonly used emojis. No duplicates.")
-    if let extraInstruction, !extraInstruction.isEmpty {
-      lines.append(extraInstruction)
-    }
-    lines.append(
-      "Return JSON only in this shape: {\"emojis\":[\"<emoji>\",\"<emoji>\",\"<emoji>\"]}"
-    )
-    return lines.joined(separator: "\n")
-  }
-
   public static func clampedTemperature(_ value: Double) -> Double {
     min(max(value, 0), 1)
   }
@@ -199,15 +170,4 @@ public struct OpenRouterEmojiRecommender: EmojiCandidateRetrieving {
       .filter { !$0.isEmpty }
   }
 
-  private func retryInstruction(missing: Int) -> String {
-    "The previous answer did not contain enough real Unicode emojis. Suggest \(missing) additional distinct emojis."
-  }
-
-  private static let systemPrompt = """
-    You recommend emojis that a person would insert while writing.
-    Prefer communicative intent over literal translation.
-    When a tone and style is provided, every emoji must fit that tone.
-    Do not think out loud. Do not include skin-tone variants. Do not repeat emojis.
-    Reply with JSON only.
-    """
 }

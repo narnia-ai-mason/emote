@@ -19,6 +19,9 @@ struct EmoteApp: App {
         AppChrome.showSettings()
       }
       .keyboardShortcut(",", modifiers: .command)
+      Button("About Emote") {
+        AppChrome.showAbout()
+      }
       Divider()
       Button("Quit") {
         NSApp.terminate(nil)
@@ -33,6 +36,12 @@ struct EmoteApp: App {
         .background(SettingsWindowChrome())
     }
     .windowResizability(.contentSize)
+
+    Window("About Emote", id: "about") {
+      AboutView()
+        .background(SettingsWindowChrome())
+    }
+    .windowResizability(.contentSize)
   }
 }
 
@@ -44,6 +53,9 @@ private struct MenuBarLabel: View {
       .onAppear {
         AppChrome.openSettingsWindow = {
           openWindow(id: "settings")
+        }
+        AppChrome.openAboutWindow = {
+          openWindow(id: "about")
         }
       }
   }
@@ -84,6 +96,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       self?.hud.handle(key)
     }
     HotKeyMonitor.shared.register(SettingsStore.shared.hotkey)
+    AppleFoundationEmojiRecommender.prewarmIfAvailable()
+    let settings = SettingsStore.shared
+    if !EngineRequirements.isReady(engine: settings.engine, apiKey: settings.apiKey) {
+      AppChrome.showSettings()
+    }
+  }
+
+  func applicationDidBecomeActive(_ notification: Notification) {
+    AppleFoundationEmojiRecommender.prewarmIfAvailable()
   }
 
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -111,9 +132,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     let settings = SettingsStore.shared
-    guard !settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+    let retriever: any EmojiCandidateRetrieving
+    do {
+      retriever = try EmojiRecommenderFactory.make(
+        engine: settings.engine,
+        apiKey: settings.apiKey,
+        model: settings.model,
+        fallbackModels: settings.fallbackModels,
+        temperature: settings.temperature
+      )
+    } catch EmojiRecommendationError.missingAPIKey {
       AppChrome.showSettings()
       hud.show(message: "Add your API key in Settings", anchor: nil)
+      return
+    } catch EmojiRecommendationError.notConfigured(let detail) {
+      AppChrome.showSettings()
+      hud.show(message: detail, anchor: nil)
+      return
+    } catch EmojiRecommendationError.onDeviceUnavailable(let detail) {
+      AppChrome.showSettings()
+      hud.show(message: detail, anchor: nil)
+      return
+    } catch {
+      hud.show(message: humanMessage(for: error), anchor: nil)
       return
     }
 
@@ -128,10 +169,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let tone = settings.tone.trimmingCharacters(in: .whitespacesAndNewlines)
     query.tone = tone.isEmpty ? nil : tone
     let anchor = FrontmostEditor.anchorRect(in: snapshot, focus: focus)
-    let apiKey = settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-    let model = settings.model
-    let fallbacks = settings.fallbackModels
-    let temperature = settings.temperature
     let keyword = clipped(query.focus, limit: 80)
     let context = query.context.map { clipped($0, limit: 240) }
     let queryTone = query.tone
@@ -142,12 +179,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       do {
         let result = try await Task.detached {
           try await EmojiRecommendationService(
-            retriever: OpenRouterEmojiRecommender(
-              client: OpenRouterClient(apiKey: apiKey),
-              model: model,
-              fallbackModels: fallbacks,
-              temperature: temperature
-            )
+            retriever: retriever
           ).recommend(
             for: keyword,
             context: context,
@@ -194,6 +226,10 @@ private func humanMessage(for error: Error) -> String {
     return "Nothing to recommend"
   case .missingAPIKey:
     return "Add your API key in Settings"
+  case .notConfigured(let detail):
+    return detail
+  case .onDeviceUnavailable(let detail):
+    return detail
   case .requestFailed(let detail) where detail.contains("401"):
     return "That API key isn't valid"
   case .requestFailed(let detail)

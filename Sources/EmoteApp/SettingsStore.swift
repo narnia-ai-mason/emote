@@ -6,6 +6,10 @@ import SwiftUI
 final class SettingsStore: ObservableObject {
   static let shared = SettingsStore()
 
+  @Published var engine: RecommendationEngine {
+    didSet { UserDefaults.standard.set(engine.rawValue, forKey: Keys.engine) }
+  }
+
   @Published var apiKey: String {
     didSet { UserDefaults.standard.set(apiKey, forKey: Keys.apiKey) }
   }
@@ -49,6 +53,13 @@ final class SettingsStore: ObservableObject {
 
   private init() {
     let defaults = UserDefaults.standard
+    if let storedEngine = defaults.string(forKey: Keys.engine),
+      let engine = RecommendationEngine(rawValue: storedEngine)
+    {
+      self.engine = engine
+    } else {
+      engine = .default
+    }
     apiKey = defaults.string(forKey: Keys.apiKey) ?? ""
     model = defaults.string(forKey: Keys.model) ?? OpenRouterEmojiRecommender.defaultModel
     tone = defaults.string(forKey: Keys.tone) ?? ""
@@ -75,6 +86,7 @@ final class SettingsStore: ObservableObject {
   }
 
   private enum Keys {
+    static let engine = "emote.engine"
     static let apiKey = "emote.apiKey"
     static let model = "emote.model"
     static let tone = "emote.tone"
