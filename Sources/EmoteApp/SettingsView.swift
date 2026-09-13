@@ -14,13 +14,11 @@ struct SettingsView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 22) {
       settingsField("Engine") {
-        Picker("Engine", selection: $store.engine) {
-          ForEach(RecommendationEngine.allCases, id: \.self) { engine in
-            Text(engine.title).tag(engine)
-          }
-        }
-        .labelsHidden()
-        .pickerStyle(.segmented)
+        EnginePicker(
+          engine: $store.engine,
+          onDeviceEnabled: onDeviceStatus.isAvailable
+        )
+        .frame(maxWidth: .infinity)
 
         Text(engineHelp)
           .font(.callout)
@@ -42,7 +40,7 @@ struct SettingsView: View {
         }
       }
 
-      if store.engine != .openRouter {
+      if store.engine != .openRouter || !onDeviceStatus.isAvailable {
         settingsField("Apple Intelligence") {
           if onDeviceStatus.isAvailable {
             Text("Ready.")
@@ -200,7 +198,11 @@ struct SettingsView: View {
   private var engineHelp: String {
     switch store.engine {
     case .auto:
-      "Needs Apple Intelligence or an OpenRouter API key. Uses on-device when it's ready and fast enough."
+      if onDeviceStatus.isAvailable {
+        "Needs Apple Intelligence or an OpenRouter API key. Uses on-device when it's ready and fast enough."
+      } else {
+        "Needs Apple Intelligence or an OpenRouter API key."
+      }
     case .onDevice:
       "Needs Apple Intelligence. No API key."
     case .openRouter:
@@ -241,6 +243,7 @@ struct SettingsView: View {
 
   private func refreshRouting() {
     onDeviceStatus = OnDeviceModelStatus.current
+    store.engine = store.engine.resolved(onDevice: onDeviceStatus)
     routing = AutoRoutingMemory.shared.snapshot
   }
 
@@ -254,6 +257,52 @@ private enum SettingsField: Hashable {
   case apiKey
   case model
   case tone
+}
+
+private struct EnginePicker: NSViewRepresentable {
+  @Binding var engine: RecommendationEngine
+  var onDeviceEnabled: Bool
+
+  func makeCoordinator() -> Coordinator {
+    Coordinator()
+  }
+
+  func makeNSView(context: Context) -> NSSegmentedControl {
+    let control = NSSegmentedControl(
+      labels: RecommendationEngine.allCases.map(\.title),
+      trackingMode: .selectOne,
+      target: context.coordinator,
+      action: #selector(Coordinator.changed(_:))
+    )
+    control.segmentStyle = .rounded
+    control.segmentDistribution = .fillEqually
+    control.setContentHuggingPriority(.defaultLow, for: .horizontal)
+    control.setAccessibilityLabel("Engine")
+    return control
+  }
+
+  func updateNSView(_ control: NSSegmentedControl, context: Context) {
+    context.coordinator.onSelect = { engine = $0 }
+    if let onDeviceIndex = RecommendationEngine.allCases.firstIndex(of: .onDevice) {
+      control.setEnabled(onDeviceEnabled, forSegment: onDeviceIndex)
+    }
+    if let index = RecommendationEngine.allCases.firstIndex(of: engine) {
+      control.selectedSegment = index
+    }
+  }
+
+  @MainActor
+  final class Coordinator: NSObject {
+    var onSelect: ((RecommendationEngine) -> Void)?
+
+    @objc func changed(_ sender: NSSegmentedControl) {
+      let cases = RecommendationEngine.allCases
+      guard cases.indices.contains(sender.selectedSegment) else {
+        return
+      }
+      onSelect?(cases[sender.selectedSegment])
+    }
+  }
 }
 
 private struct SettingsFocusSink: NSViewRepresentable {

@@ -15,4 +15,11 @@ public enum RecommendationEngine: String, CaseIterable, Sendable {
       "OpenRouter"
     }
   }
+
+  public func resolved(onDevice: OnDeviceModelStatus) -> RecommendationEngine {
+    if self == .onDevice && !onDevice.isAvailable {
+      return .auto
+    }
+    return self
+  }
 }

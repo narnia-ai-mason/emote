@@ -6,6 +6,8 @@
 
 Emoji suggestions that appear next to your cursor.
 
+Most emoji pickers ask you to remember a name — `:tada:`, “party popper”, or a search box. Emote does not. It reads the sentence and suggests for the feeling.
+
 Emote lives in the Mac menu bar. While you’re writing, press a hotkey and a few emojis show up beside the caret — like the suggestions macOS already gives you for words, but for the feeling of the sentence.
 
 Pick one with the keyboard. It drops into whatever you were already typing.

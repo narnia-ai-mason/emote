@@ -98,6 +98,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     HotKeyMonitor.shared.register(SettingsStore.shared.hotkey)
     AppleFoundationEmojiRecommender.prewarmIfAvailable()
     let settings = SettingsStore.shared
+    settings.engine = settings.engine.resolved(onDevice: OnDeviceModelStatus.current)
     if !EngineRequirements.isReady(engine: settings.engine, apiKey: settings.apiKey) {
       AppChrome.showSettings()
     }
@@ -105,6 +106,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
   func applicationDidBecomeActive(_ notification: Notification) {
     AppleFoundationEmojiRecommender.prewarmIfAvailable()
+    let settings = SettingsStore.shared
+    settings.engine = settings.engine.resolved(onDevice: OnDeviceModelStatus.current)
   }
 
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -132,6 +135,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     let settings = SettingsStore.shared
+    settings.engine = settings.engine.resolved(onDevice: OnDeviceModelStatus.current)
     let retriever: any EmojiCandidateRetrieving
     do {
       retriever = try EmojiRecommenderFactory.make(

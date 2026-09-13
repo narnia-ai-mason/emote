@@ -72,4 +72,23 @@ final class EngineRequirementsTests: XCTestCase {
       XCTAssertEqual(error as? EmojiRecommendationError, .missingAPIKey)
     }
   }
+
+  func testOnDeviceFallsBackToAutoWhenUnavailable() {
+    XCTAssertEqual(
+      RecommendationEngine.onDevice.resolved(onDevice: .available),
+      .onDevice
+    )
+    XCTAssertEqual(
+      RecommendationEngine.onDevice.resolved(onDevice: .appleIntelligenceNotEnabled),
+      .auto
+    )
+    XCTAssertEqual(
+      RecommendationEngine.onDevice.resolved(onDevice: .unsupportedOS),
+      .auto
+    )
+    XCTAssertEqual(
+      RecommendationEngine.openRouter.resolved(onDevice: .deviceNotEligible),
+      .openRouter
+    )
+  }
 }
