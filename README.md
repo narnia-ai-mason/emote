@@ -1,3 +1,4 @@
+
 <p align="center">
   <img src="Resources/Emote.png" width="128" alt="Emote">
 </p>
@@ -12,22 +13,28 @@ Emote lives in the Mac menu bar. While you’re writing, press a hotkey and a fe
 
 Pick one with the keyboard. It drops into whatever you were already typing.
 
-https://github.com/user-attachments/assets/PASTE-EN
+https://github.com/user-attachments/assets/6baae39e-ed64-4fb0-a38f-562e422bffac
 
 <details>
 <summary>한국어 · 日本語 · 中文</summary>
 
 **한국어**
 
-https://github.com/user-attachments/assets/PASTE-KO
+
+https://github.com/user-attachments/assets/b341b74e-6c21-4d17-a37c-f4b3bb7cae46
+
 
 **日本語**
 
-https://github.com/user-attachments/assets/PASTE-JA
+
+https://github.com/user-attachments/assets/d4ba211a-fddc-4761-b8e9-52ca73a2f7df
+
 
 **中文**
 
-https://github.com/user-attachments/assets/PASTE-ZH
+
+https://github.com/user-attachments/assets/ba6b1b45-8cd2-482b-b67e-b21733af134c
+
 
 </details>
 
