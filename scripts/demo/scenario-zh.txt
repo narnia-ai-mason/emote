@@ -1,0 +1,49 @@
+# Emote 演示 — 中文
+# 在 Notes 里，第一行会自动成为标题。
+# 语法见 scripts/demo/driver.swift 开头。\s 是空格，\n 是 Return。
+# pick 后面的表情按优先级排列，HUD 里出现的第一个匹配项会被选中。
+cps 9
+
+# 1. 在句末（句号后的空格）按，它看整句话。
+type 大家好，我是Mason。\s
+fn
+pick 👋 🙋 🙌 😊 🙂 😄 🤗
+
+# 2. 再来一次句末。
+type \n我做了一个小小的Mac应用，叫Emote。写东西的时候按一下热键，光标旁边就会像变魔术一样弹出几个表情。\s
+fn
+pick ✨ 🪄 🎉 💫 🌟 ⚡ ✍️ ⌨️ ✏️
+
+# 3. 输入标题后回到行首再按，表情会插在标题前面。
+type \n\n
+key shift+cmd+h
+type 怎么用
+key cmd+left
+fn
+pick 💡 👉 📖 ❓ 🤔 ✍️ 🧭 📝 📌 🔍 📚 🎯
+type \s
+key cmd+right
+
+# 4. 紧跟在一个词后面按，它只看那个词。
+type \n在句末按，它看整句话的感觉。\n紧跟在一个词后面按，它只看那个词。比如咖啡
+fn
+pick ☕ 🍵
+
+# 5. 选中一个词再按，它会把那个词换成表情。
+type ，或者披萨。\n选中一个词再按，它会把那个词换成表情。\n大家，谢谢
+key shift+left
+key shift+left
+fn
+pick 🙏 👏 🙌 🤝 😊 🥰 💖 ❤️ 🌹 💐 🙇 🤗 🫶 ✨
+
+# 6. 不选，直接再按一次热键，会出现新的推荐。
+type \n如果都不满意，再按一次热键就好。\s
+fn
+again
+pick 🔄 🔁 🆕 🎲 👌 👍 🙆 🙆‍♀️ 🙆‍♂️ 😊 🙂 ✨
+
+# 7. 结尾。
+type \n\n安装方法在 README 里。\s
+fn
+pick 📖 📦 📄 🔧 ✅ 📘 🚀 👍
+wait 2500

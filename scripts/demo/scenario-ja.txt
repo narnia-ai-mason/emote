@@ -1,0 +1,52 @@
+# Emote デモ — 日本語
+# Notes では最初の行が自動的にタイトルになります。
+# 文法は scripts/demo/driver.swift の冒頭を参照。\s は空白、\n は Return。
+# pick の後の絵文字は優先順です。HUD に出たものの中で先頭のものを選びます。
+cps 9
+
+# 1. 文末（句点の後の空白）で押すと、文全体を見ます。
+type こんにちは、Masonです。\s
+fn
+pick 👋 🙋 🙌 😊 🙂 😄 🤗
+
+# 2. もう一度、文末で。
+type \nEmoteという小さなMacアプリを作りました。書いている途中でホットキーを押すと、カーソルの横に絵文字がぱっと出てきます。\s
+fn
+pick ✨ 🎉 🪄 💫 😄 🙂 😊 ⌨️ ✍️ ✏️
+
+# 3. 見出しを打ってから行頭に戻って押すと、見出しの前に入ります。
+type \n\n
+key shift+cmd+h
+type 使い方
+key cmd+left
+fn
+pick 💡 👉 📖 ❓ 🤔 ✍️ 🧭 📝 📌 🔍 📚 🎯
+type \s
+key cmd+right
+
+# 4. 単語の直後で押すと、その単語を見ます。
+type \n文の終わりで押すと、文全体の雰囲気を見ます。\n単語の直後で押すと、その単語を見ます。たとえばコーヒー
+fn
+pick ☕ 🍵
+
+# 5. 単語を選んで押すと、その場所を絵文字に置き換えます。
+type 一杯のように。\n単語を選んで押すと、その場所を絵文字に置き換えます。\nみんな、ありがとう
+key shift+left
+key shift+left
+key shift+left
+key shift+left
+key shift+left
+fn
+pick 🙏 👏 😊 🥰 💐 ❤️ 🙇 🤗 ✨ 🫶
+
+# 6. 選ばずにもう一度押すと、新しい候補が出ます。
+type \n気に入るものがなかったら、もう一度ホットキーを押せば大丈夫。\s
+fn
+again
+pick 🔄 🔁 🆕 🎲 👌 👍 🙆 🙆‍♀️ 🙆‍♂️ 😊 🙂 ✨
+
+# 7. まとめ。
+type \n\nインストール方法はREADMEにあります。\s
+fn
+pick 📖 📦 📄 🔧 ✅ 📘 🚀 👍
+wait 2500
