@@ -12,7 +12,24 @@ Emote lives in the Mac menu bar. While you’re writing, press a hotkey and a fe
 
 Pick one with the keyboard. It drops into whatever you were already typing.
 
-https://github.com/user-attachments/assets/3d642a04-41bc-404b-9cdb-40dd79dc96c6
+https://github.com/user-attachments/assets/PASTE-EN
+
+<details>
+<summary>한국어 · 日本語 · 中文</summary>
+
+**한국어**
+
+https://github.com/user-attachments/assets/PASTE-KO
+
+**日本語**
+
+https://github.com/user-attachments/assets/PASTE-JA
+
+**中文**
+
+https://github.com/user-attachments/assets/PASTE-ZH
+
+</details>
 
 ## Install
 
