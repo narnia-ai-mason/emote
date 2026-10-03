@@ -248,4 +248,46 @@ public struct AppleFoundationEmojiRecommender: EmojiCandidateRetrieving {
       return results
     }
   }
+
+  @available(macOS 26.0, *)
+  @Generable
+  private struct SituationEmojiPicks {
+    @Guide(
+      description: "Five to ten distinct emoji characters with no repeats and no skin-tone variants",
+      .count(5...10)
+    )
+    var emojis: [String]
+  }
+
+  extension AppleFoundationEmojiRecommender {
+    @available(macOS 26.0, *)
+    public static func complete(
+      instructions: String,
+      prompt: String,
+      temperature: Double = 0.2
+    ) async throws -> [String] {
+      let status = FoundationModelsStatus.current()
+      guard status.isAvailable else {
+        throw EmojiRecommendationError.onDeviceUnavailable(status.summary)
+      }
+      let session = LanguageModelSession(
+        model: .default,
+        instructions: instructions
+      )
+      let options = GenerationOptions(
+        temperature: temperature,
+        maximumResponseTokens: 160
+      )
+      do {
+        let response = try await session.respond(
+          to: prompt,
+          generating: SituationEmojiPicks.self,
+          options: options
+        )
+        return response.content.emojis
+      } catch {
+        throw EmojiRecommendationError.requestFailed(error.localizedDescription)
+      }
+    }
+  }
 #endif

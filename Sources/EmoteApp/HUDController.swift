@@ -14,7 +14,7 @@ final class HUDController: NSObject {
   private var onCommit: ((EmojiRecommendation) -> Void)?
   private var anchor: CGRect?
 
-  func showLoading(anchor: CGRect?) {
+  func showLoading(anchor: CGRect?, message: String = "Finding…") {
     selectedIndex = 0
     recommendations = []
     onCommit = nil
@@ -24,6 +24,7 @@ final class HUDController: NSObject {
         recommendations: [],
         selectedIndex: 0,
         isLoading: true,
+        loadingMessage: message,
         message: nil,
         onChoose: { _ in }
       ),

@@ -49,38 +49,28 @@ macOS 14 or later. If Gatekeeper blocks the app, open it once from Finder with *
 ## Try it
 
 1. Open **Settings** from the menu bar icon.
-2. Choose an **Engine**.
+2. Leave the engine on **Gemma 4**, or switch to **API**.
 3. Allow **Accessibility** so Emote can read and type into other apps.
 
 Then go to any text field and press **⌃⌘E**. You can change that shortcut in Settings.
 
 Tab or the arrow keys move. Enter inserts. Esc dismisses.
 
-If the caret is in a word, Emote suggests for that word. Word boundaries follow macOS, so Japanese, Chinese, and other languages without spaces still focus on the word by the cursor — not the whole run of characters. At the start of a sentence, it suggests for the whole line. Select a word to replace it.
+Where the caret is changes the request. At the start of a sentence with no ending punctuation, Emote treats that line as a heading and also reads the first sentence on the next line, if there is one. After a finished sentence, or inside one, it suggests for that sentence. In a short word, it suggests for that word. A longer selection is treated as a sentence. Word boundaries follow macOS, so Japanese, Chinese, and other languages without spaces still focus on the word by the cursor.
 
-Set a tone if you want the suggestions warmer, drier, or a little extra.
+Settings has four tones: neutral, dry, warm, and joyful. Tone changes the mood of the list. It does not change what the sentence is about.
 
 Fewer than five suggestions is fine. Press the hotkey again if you want another set.
 
 ## Engines
 
-**Auto** uses Apple Intelligence on this Mac when it’s ready and fast enough. If it isn’t, Auto uses OpenRouter. You need one or the other: Apple Intelligence turned on, or an OpenRouter API key.
+**Gemma 4** is the default. It runs Gemma 4 E4B on this Mac. The first time, Settings asks you to download it (about 5.2 GB). After that, Settings shows 준비됨. The first suggestion after you open the app can take a few seconds while the model loads. The HUD says **Loading the model…** for that press, then **Finding…** after that. The sentence stays on this Mac. This does not need Apple Intelligence, so it runs on macOS 14 as well as later versions.
 
-**On-device** uses only the Apple Intelligence model on this Mac. No API key. That needs macOS 26 or later, Apple silicon, and Apple Intelligence enabled in System Settings. Settings can open that pane for you.
+**API** sends the sentence to an OpenAI-compatible chat API. Settings takes a base URL, an API key, and a model name. The base URL is the provider's `/v1` root. OpenAI, OpenRouter, Groq, and Together all use that shape. The default is OpenAI's `https://api.openai.com/v1` with `gpt-4o-mini`.
 
-**OpenRouter** sends the text around the cursor to [OpenRouter](https://openrouter.ai) and the model you chose. Apple Intelligence can stay off. You need an API key.
+Gemma 4 stays on this Mac. API is a third-party service. Emote does not run it and is not responsible for how that service stores or uses the text. See **About Emote** in the menu bar.
 
-On-device stays on this Mac. OpenRouter is a third-party service. Emote does not run it and is not responsible for how it stores or uses that text. See **About Emote** in the menu bar, and OpenRouter’s [terms](https://openrouter.ai/terms) and [privacy](https://openrouter.ai/privacy).
-
-## OpenRouter models
-
-When the engine is Auto or OpenRouter, **Auto routing** (`openrouter/free`) may pick a different free model each time. Pin **Nex N2.5 Mini** — or paste any other model id — if you want the same model on every press.
-
-These are LLM suggestions, so the emojis can change even when the sentence, model, and temperature stay the same. That is normal.
-
-Temperature in Settings applies to OpenRouter. Lower is meant to be more consistent. Higher is meant to be more varied. The model may ignore that, especially on free endpoints. Even at 0, results can still change. On-device uses a fixed 0.7 so the list does not collapse to one or two emojis.
-
-Some free models stay blocked unless you allow free-model training in [OpenRouter privacy settings](https://openrouter.ai/settings/privacy). That setting is on your account, not per API key.
+These are model suggestions, so the emojis can change even when the sentence stays the same.
 
 ## Build from source
 
@@ -95,6 +85,8 @@ swift test
 The same recommender is available from the terminal:
 
 ```sh
-swift run EmoteCLI --engine auto "hello"
-swift run EmoteCLI --engine on-device --prewarm --tone "warm and light" "I just shipped"
+swift run EmoteCLI --engine gemma4 "hello"
+swift run EmoteCLI --engine api --tone warm "I just shipped"
 ```
+
+For API, set `EMOTE_API_KEY` (or `OPENAI_API_KEY`), and optionally `EMOTE_API_BASE_URL` and `EMOTE_API_MODEL`. `--model` overrides the model name.

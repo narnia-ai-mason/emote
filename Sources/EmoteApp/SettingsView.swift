@@ -5,125 +5,42 @@ import SwiftUI
 
 struct SettingsView: View {
   @ObservedObject var store: SettingsStore
-  @FocusState private var focusedField: SettingsField?
+  @ObservedObject private var gemma = GemmaModelStore.shared
   @State private var resignToken = 0
   @State private var accessibilityTrusted = AXIsProcessTrusted()
-  @State private var onDeviceStatus = OnDeviceModelStatus.current
-  @State private var routing = AutoRoutingMemory.shared.snapshot
 
   var body: some View {
     VStack(alignment: .leading, spacing: 22) {
       settingsField("Engine") {
-        EnginePicker(
-          engine: $store.engine,
-          onDeviceEnabled: onDeviceStatus.isAvailable
-        )
-        .frame(maxWidth: .infinity)
+        EnginePicker(engine: $store.engine)
+          .frame(maxWidth: .infinity)
 
         Text(engineHelp)
           .font(.callout)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
+      }
 
-        if let summary = routing.summary {
-          Text(summary)
-            .font(.callout)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-        }
-
-        if routing.skippedForSlowness {
-          Button("Use on-device again") {
-            AutoRoutingMemory.shared.resetSkip()
-            routing = AutoRoutingMemory.shared.snapshot
-          }
+      if store.engine == .gemma4 {
+        settingsField("Gemma 4") {
+          GemmaDownloadSection(store: gemma)
         }
       }
 
-      if store.engine != .openRouter || !onDeviceStatus.isAvailable {
-        settingsField("Apple Intelligence") {
-          if onDeviceStatus.isAvailable {
-            Text("Ready.")
-              .font(.callout)
-              .foregroundStyle(.secondary)
-          } else {
-            Text(onDeviceStatus.summary)
-              .font(.callout)
-              .foregroundStyle(.secondary)
-              .fixedSize(horizontal: false, vertical: true)
-            if onDeviceStatus.canOpenSystemSettings {
-              Button("Open Settings…") {
-                AppChrome.openAppleIntelligenceSettings()
-              }
-            }
-          }
-        }
-      }
-
-      if store.engine != .onDevice {
-        settingsField("API key") {
-          SecureField("OpenRouter API key", text: $store.apiKey)
-            .textFieldStyle(.roundedBorder)
-            .focused($focusedField, equals: .apiKey)
-          Text(apiKeyHelp)
-            .font(.callout)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-        }
-
-        settingsField("Model") {
-          Picker("Model", selection: $store.model) {
-            ForEach(OpenRouterEmojiRecommender.recommendedModels, id: \.self) { model in
-              Text(Self.title(for: model)).tag(model)
-            }
-            if !OpenRouterEmojiRecommender.recommendedModels.contains(store.model) {
-              Text("Custom").tag(store.model)
-            }
-          }
-          .labelsHidden()
-          .pickerStyle(.menu)
-
-          TextField("openrouter/free", text: $store.model)
-            .textFieldStyle(.roundedBorder)
-            .font(.system(.body, design: .monospaced))
-            .focused($focusedField, equals: .model)
-
-          Text("Pick a model or paste any OpenRouter model id.")
-            .font(.callout)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-          if store.model == OpenRouterEmojiRecommender.defaultModel {
-            Text("Auto routing may pick a different free model each time. Pin a model for more consistent suggestions.")
-              .font(.callout)
-              .foregroundStyle(.secondary)
-              .fixedSize(horizontal: false, vertical: true)
-          }
-
-          Link(
-            "OpenRouter privacy settings",
-            destination: URL(string: "https://openrouter.ai/settings/privacy")!
-          )
-          .font(.callout)
-        }
-
-        settingsField("Temperature") {
-          HStack(spacing: 10) {
-            Slider(value: $store.temperature, in: 0...1, step: 0.1)
-            Text(store.temperature, format: .number.precision(.fractionLength(1)))
-              .font(.body.monospacedDigit())
-              .frame(width: 28, alignment: .trailing)
-          }
-          Text(temperatureHelp)
-            .font(.callout)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
+      if store.engine == .api {
+        settingsField("API") {
+          APIFields(store: store)
         }
       }
 
       settingsField("Tone") {
-        TextField("e.g. warm and light", text: $store.tone)
-          .textFieldStyle(.roundedBorder)
-          .focused($focusedField, equals: .tone)
+        Picker("Tone", selection: $store.tone) {
+          ForEach(SuggestionTone.allCases, id: \.rawValue) { tone in
+            Text(tone.rawValue).tag(tone.rawValue)
+          }
+        }
+        .labelsHidden()
+        .pickerStyle(.menu)
       }
 
       settingsField("Hotkey") {
@@ -197,43 +114,10 @@ struct SettingsView: View {
 
   private var engineHelp: String {
     switch store.engine {
-    case .auto:
-      if onDeviceStatus.isAvailable {
-        "Needs Apple Intelligence or an OpenRouter API key. Uses on-device when it's ready and fast enough."
-      } else {
-        "Needs Apple Intelligence or an OpenRouter API key."
-      }
-    case .onDevice:
-      "Needs Apple Intelligence. No API key."
-    case .openRouter:
-      "Needs an OpenRouter API key. Apple Intelligence can stay off."
-    }
-  }
-
-  private var temperatureHelp: String {
-    switch store.engine {
-    case .auto:
-      "Applies to OpenRouter. On-device stays at 0.7."
-    case .openRouter, .onDevice:
-      "Lower is more consistent. Higher is more varied. Even at 0, results can still change."
-    }
-  }
-
-  private var apiKeyHelp: String {
-    if store.engine == .auto && onDeviceStatus.isAvailable {
-      return "Optional. Used when on-device is unavailable or too slow."
-    }
-    return "An API key is required to get recommendations."
-  }
-
-  private static func title(for model: String) -> String {
-    switch model {
-    case "openrouter/free":
-      return "Auto routing"
-    case "nex-agi/nex-n2.5-mini:free":
-      return "Nex N2.5 Mini"
-    default:
-      return model
+    case .gemma4:
+      "Gemma 4 E4B runs on this Mac. Download it once in Settings."
+    case .api:
+      "Sends the sentence to an OpenAI-compatible chat API. OpenAI, OpenRouter, Groq, and Together all use this shape."
     }
   }
 
@@ -242,26 +126,81 @@ struct SettingsView: View {
   }
 
   private func refreshRouting() {
-    onDeviceStatus = OnDeviceModelStatus.current
-    store.engine = store.engine.resolved(onDevice: onDeviceStatus)
-    routing = AutoRoutingMemory.shared.snapshot
+    gemma.refresh()
   }
 
   private func resignFocus() {
-    focusedField = nil
     resignToken += 1
   }
 }
 
-private enum SettingsField: Hashable {
-  case apiKey
-  case model
-  case tone
+private struct GemmaDownloadSection: View {
+  @ObservedObject var store: GemmaModelStore
+
+  var body: some View {
+    if store.isReady {
+      Text("준비됨")
+        .font(.callout)
+        .foregroundStyle(.secondary)
+    } else if store.isDownloading {
+      VStack(alignment: .leading, spacing: 8) {
+        ProgressView(value: store.fraction)
+        Text("받는 중 \(Int(store.fraction * 100))%")
+          .font(.callout)
+          .foregroundStyle(.secondary)
+          .monospacedDigit()
+      }
+    } else {
+      Text("처음 쓸 때는 Gemma 4 E4B를 이 Mac에 받아야 합니다. 약 5.2GB이고, 받은 뒤에는 이 앱 안에서만 씁니다.")
+        .font(.callout)
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+      if let failure = store.failure {
+        Text(failure)
+          .font(.callout)
+          .foregroundStyle(.secondary)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+      Button("모델 받기…") {
+        store.confirmDownload = true
+      }
+      .confirmationDialog(
+        "Gemma 4 E4B를 받을까요?",
+        isPresented: $store.confirmDownload,
+        titleVisibility: .visible
+      ) {
+        Button("받기") {
+          store.startDownload()
+        }
+        Button("나중에", role: .cancel) {}
+      } message: {
+        Text("약 5.2GB를 받습니다. 받는 동안 진행률이 여기 표시됩니다.")
+      }
+    }
+  }
+}
+
+private struct APIFields: View {
+  @ObservedObject var store: SettingsStore
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      TextField("Base URL", text: $store.apiBaseURL)
+        .textFieldStyle(.roundedBorder)
+      SecureField("API key", text: $store.apiKey)
+        .textFieldStyle(.roundedBorder)
+      TextField("Model", text: $store.apiModel)
+        .textFieldStyle(.roundedBorder)
+      Text("Base URL is the provider's /v1 root. Example: https://openrouter.ai/api/v1")
+        .font(.callout)
+        .foregroundStyle(.secondary)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+  }
 }
 
 private struct EnginePicker: NSViewRepresentable {
   @Binding var engine: RecommendationEngine
-  var onDeviceEnabled: Bool
 
   func makeCoordinator() -> Coordinator {
     Coordinator()
@@ -283,9 +222,6 @@ private struct EnginePicker: NSViewRepresentable {
 
   func updateNSView(_ control: NSSegmentedControl, context: Context) {
     context.coordinator.onSelect = { engine = $0 }
-    if let onDeviceIndex = RecommendationEngine.allCases.firstIndex(of: .onDevice) {
-      control.setEnabled(onDeviceEnabled, forSegment: onDeviceIndex)
-    }
     if let index = RecommendationEngine.allCases.firstIndex(of: engine) {
       control.selectedSegment = index
     }

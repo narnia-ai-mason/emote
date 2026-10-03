@@ -1,7 +1,7 @@
 import Foundation
 
-enum EmojiResponseParser {
-  static func recommendations(from content: String, limit: Int) -> [EmojiRecommendation] {
+public enum EmojiResponseParser {
+  public static func recommendations(from content: String, limit: Int) -> [EmojiRecommendation] {
     var seen = Set<String>()
     var results: [EmojiRecommendation] = []
 
@@ -21,7 +21,7 @@ enum EmojiResponseParser {
     return results
   }
 
-  static func rawCandidates(in content: String) -> [String] {
+  public static func rawCandidates(in content: String) -> [String] {
     if let fromJSON = jsonCandidates(in: content), !fromJSON.isEmpty {
       return fromJSON
     }

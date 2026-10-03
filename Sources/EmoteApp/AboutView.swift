@@ -22,38 +22,26 @@ struct AboutView: View {
       )
       .fixedSize(horizontal: false, vertical: true)
 
-      Text("On-device")
+      Text("API")
         .font(.headline)
       Text(
-        "When you use On-device or Auto with Apple Intelligence, the sentence is sent to the model on this Mac. It does not go through Emote's servers. There are none."
+        "When you use API, the sentence is sent to the chat service in Settings. Emote does not run a server of its own."
       )
       .foregroundStyle(.secondary)
       .fixedSize(horizontal: false, vertical: true)
 
-      Text("OpenRouter")
+      Text("Gemma 4")
         .font(.headline)
       Text(
-        "When you use OpenRouter or Auto falls back to it, the text around the cursor is sent to OpenRouter and whichever model you chose. Emote does not run those services and is not responsible for how they store or use that text. That is governed by OpenRouter and the model provider."
+        "Gemma 4 E4B is downloaded once and then runs on this Mac. The sentence stays on this Mac."
       )
       .foregroundStyle(.secondary)
       .fixedSize(horizontal: false, vertical: true)
-
-      HStack(spacing: 12) {
-        Link(
-          "OpenRouter terms",
-          destination: URL(string: "https://openrouter.ai/terms")!
-        )
-        Link(
-          "OpenRouter privacy",
-          destination: URL(string: "https://openrouter.ai/privacy")!
-        )
-      }
-      .font(.callout)
 
       Text("License")
         .font(.headline)
       Text(
-        "Emote is provided as-is, without warranty. You choose the engine. You are responsible for the text you send and for complying with Apple's and OpenRouter's terms."
+        "Emote is provided as-is, without warranty. You choose the engine. Gemma 4 is used under its own license."
       )
       .foregroundStyle(.secondary)
       .fixedSize(horizontal: false, vertical: true)
