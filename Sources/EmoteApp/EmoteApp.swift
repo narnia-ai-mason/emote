@@ -1,6 +1,7 @@
 import AppKit
 import Carbon.HIToolbox
 import EmoteCore
+import EmoteGemma
 import SwiftUI
 
 @main
@@ -96,18 +97,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       self?.hud.handle(key)
     }
     HotKeyMonitor.shared.register(SettingsStore.shared.hotkey)
-    AppleFoundationEmojiRecommender.prewarmIfAvailable()
     let settings = SettingsStore.shared
-    settings.engine = settings.engine.resolved(onDevice: OnDeviceModelStatus.current)
     if !EngineRequirements.isReady(engine: settings.engine, apiKey: settings.apiKey) {
       AppChrome.showSettings()
     }
-  }
-
-  func applicationDidBecomeActive(_ notification: Notification) {
-    AppleFoundationEmojiRecommender.prewarmIfAvailable()
-    let settings = SettingsStore.shared
-    settings.engine = settings.engine.resolved(onDevice: OnDeviceModelStatus.current)
   }
 
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
@@ -135,32 +128,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     let settings = SettingsStore.shared
-    settings.engine = settings.engine.resolved(onDevice: OnDeviceModelStatus.current)
-    let retriever: any EmojiCandidateRetrieving
-    do {
-      retriever = try EmojiRecommenderFactory.make(
-        engine: settings.engine,
-        apiKey: settings.apiKey,
-        model: settings.model,
-        fallbackModels: settings.fallbackModels,
-        temperature: settings.temperature
-      )
-    } catch EmojiRecommendationError.missingAPIKey {
-      AppChrome.showSettings()
-      hud.show(message: "Add your API key in Settings", anchor: nil)
-      return
-    } catch EmojiRecommendationError.notConfigured(let detail) {
-      AppChrome.showSettings()
-      hud.show(message: detail, anchor: nil)
-      return
-    } catch EmojiRecommendationError.onDeviceUnavailable(let detail) {
-      AppChrome.showSettings()
-      hud.show(message: detail, anchor: nil)
-      return
-    } catch {
-      hud.show(message: humanMessage(for: error), anchor: nil)
-      return
-    }
 
     guard let snapshot = FrontmostEditor.read(),
       let focus = TextFocus.resolve(text: snapshot.text, selectedUTF16: snapshot.selectedUTF16)
@@ -169,43 +136,93 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       return
     }
 
-    var query = focus.query
     let tone = settings.tone.trimmingCharacters(in: .whitespacesAndNewlines)
-    query.tone = tone.isEmpty ? nil : tone
     let anchor = FrontmostEditor.anchorRect(in: snapshot, focus: focus)
-    let keyword = clipped(query.focus, limit: 80)
-    let context = query.context.map { clipped($0, limit: 240) }
-    let queryTone = query.tone
-    let queryKind = query.kind
+    if settings.engine == .gemma4 {
+      guard GemmaModelStore.shared.isReady else {
+        AppChrome.showSettings()
+        hud.show(message: "Download Gemma 4 in Settings", anchor: anchor)
+        return
+      }
+      guard
+        let situation = WritingSituation.resolve(
+          text: snapshot.text,
+          selectedUTF16: snapshot.selectedUTF16,
+          tone: tone.isEmpty ? nil : tone
+        )
+      else {
+        hud.show(message: "Nothing to recommend", anchor: anchor)
+        return
+      }
+      hud.showLoading(
+        anchor: anchor,
+        message: GemmaEmojiEngine.isModelLoaded() ? "Finding…" : "Loading the model…"
+      )
+      recommendTask = Task {
+        do {
+          let recommendations = try await GemmaEmojiEngine.recommend(situation)
+          guard !Task.isCancelled else { return }
+          await MainActor.run {
+            hud.show(
+              recommendations: recommendations,
+              anchor: anchor
+            ) { recommendation in
+              FrontmostEditor.apply(emoji: recommendation.emoji, to: snapshot, focus: focus)
+            }
+          }
+        } catch {
+          guard !Task.isCancelled else { return }
+          await MainActor.run {
+            hud.show(message: humanMessage(for: error), anchor: anchor)
+          }
+        }
+      }
+      return
+    }
 
+    guard
+      let situation = WritingSituation.resolve(
+        text: snapshot.text,
+        selectedUTF16: snapshot.selectedUTF16,
+        tone: tone.isEmpty ? nil : tone
+      )
+    else {
+      hud.show(message: "Nothing to recommend", anchor: anchor)
+      return
+    }
+    let key = settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !key.isEmpty else {
+      AppChrome.showSettings()
+      hud.show(message: "Add your API key in Settings", anchor: anchor)
+      return
+    }
+    let model = settings.apiModel.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !model.isEmpty else {
+      AppChrome.showSettings()
+      hud.show(message: "Set a model name in Settings", anchor: anchor)
+      return
+    }
     hud.showLoading(anchor: anchor)
+    let baseURL = settings.apiBaseURL
     recommendTask = Task {
       do {
-        let result = try await Task.detached {
-          try await EmojiRecommendationService(
-            retriever: retriever
-          ).recommend(
-            for: keyword,
-            context: context,
-            tone: queryTone,
-            kind: queryKind
-          )
-        }.value
-        guard !Task.isCancelled else {
-          return
-        }
+        let recommendations = try await APIEmojiEngine.recommend(
+          situation,
+          baseURL: baseURL,
+          apiKey: key,
+          model: model
+        )
+        guard !Task.isCancelled else { return }
         await MainActor.run {
           hud.show(
-            recommendations: result.recommendations,
+            recommendations: recommendations,
             anchor: anchor
           ) { recommendation in
             FrontmostEditor.apply(emoji: recommendation.emoji, to: snapshot, focus: focus)
           }
         }
       } catch {
-        guard !Task.isCancelled else {
-          return
-        }
+        guard !Task.isCancelled else { return }
         await MainActor.run {
           hud.show(message: humanMessage(for: error), anchor: anchor)
         }

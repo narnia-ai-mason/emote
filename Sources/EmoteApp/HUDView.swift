@@ -5,6 +5,7 @@ struct HUDView: View {
   var recommendations: [EmojiRecommendation]
   var selectedIndex: Int
   var isLoading: Bool
+  var loadingMessage: String = "Finding…"
   var message: String?
   var onChoose: (Int) -> Void
 
@@ -14,7 +15,7 @@ struct HUDView: View {
         HStack(spacing: 8) {
           ProgressView()
             .controlSize(.small)
-          Text("Finding…")
+          Text(loadingMessage)
             .font(.system(size: 13, weight: .medium))
             .foregroundStyle(.primary.opacity(0.7))
         }

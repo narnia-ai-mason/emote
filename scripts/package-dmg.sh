@@ -28,14 +28,19 @@ wait_for_file() {
 }
 
 swift build -c release --product EmoteApp
+./scripts/build-mlx-metallib.sh
 
 rm -rf "$root" "$rw" "$dmg"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources" dist
 
 cp .build/release/EmoteApp "$app/Contents/MacOS/Emote"
+cp .build/mlx.metallib "$app/Contents/MacOS/mlx.metallib"
 cp Sources/EmoteApp/Info.plist "$app/Contents/Info.plist"
 printf 'APPLEmot' > "$app/Contents/PkgInfo"
-cp -R .build/release/Emote_EmoteCore.bundle "$app/Contents/Resources/Emote_EmoteCore.bundle"
+for bundle in .build/release/*.bundle; do
+  [ -d "$bundle" ] || continue
+  cp -R "$bundle" "$app/Contents/Resources/"
+done
 
 ./scripts/install-icon.sh "$app/Contents/Resources/Emote.icns"
 

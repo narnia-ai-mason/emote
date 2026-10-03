@@ -14,12 +14,27 @@ final class SettingsStore: ObservableObject {
     didSet { UserDefaults.standard.set(apiKey, forKey: Keys.apiKey) }
   }
 
+  @Published var apiBaseURL: String {
+    didSet { UserDefaults.standard.set(apiBaseURL, forKey: Keys.apiBaseURL) }
+  }
+
+  @Published var apiModel: String {
+    didSet { UserDefaults.standard.set(apiModel, forKey: Keys.apiModel) }
+  }
+
   @Published var model: String {
     didSet { UserDefaults.standard.set(model, forKey: Keys.model) }
   }
 
   @Published var tone: String {
-    didSet { UserDefaults.standard.set(tone, forKey: Keys.tone) }
+    didSet {
+      let resolved = SuggestionTone.resolve(tone).rawValue
+      if resolved != tone {
+        tone = resolved
+        return
+      }
+      UserDefaults.standard.set(resolved, forKey: Keys.tone)
+    }
   }
 
   @Published var hotkey: HotkeyBinding {
@@ -58,11 +73,13 @@ final class SettingsStore: ObservableObject {
     {
       self.engine = engine
     } else {
-      engine = .default
+      engine = .gemma4
     }
     apiKey = defaults.string(forKey: Keys.apiKey) ?? ""
+    apiBaseURL = defaults.string(forKey: Keys.apiBaseURL) ?? APIEmojiEngine.defaultBaseURL
+    apiModel = defaults.string(forKey: Keys.apiModel) ?? APIEmojiEngine.defaultModel
     model = defaults.string(forKey: Keys.model) ?? OpenRouterEmojiRecommender.defaultModel
-    tone = defaults.string(forKey: Keys.tone) ?? ""
+    tone = SuggestionTone.resolve(defaults.string(forKey: Keys.tone)).rawValue
     if let data = defaults.data(forKey: Keys.hotkey),
       let stored = try? JSONDecoder().decode(HotkeyBinding.self, from: data)
     {
@@ -88,6 +105,8 @@ final class SettingsStore: ObservableObject {
   private enum Keys {
     static let engine = "emote.engine"
     static let apiKey = "emote.apiKey"
+    static let apiBaseURL = "emote.apiBaseURL"
+    static let apiModel = "emote.apiModel"
     static let model = "emote.model"
     static let tone = "emote.tone"
     static let hotkey = "emote.hotkey"
