@@ -139,7 +139,7 @@ private struct GemmaDownloadSection: View {
 
   var body: some View {
     if store.isReady {
-      Text("준비됨")
+      Text("Ready.")
         .font(.callout)
         .foregroundStyle(.secondary)
     } else if store.isDownloading {

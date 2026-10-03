@@ -64,7 +64,7 @@ Fewer than five suggestions is fine. Press the hotkey again if you want another 
 
 ## Engines
 
-**Gemma 4** is the default. It runs Gemma 4 E4B on this Mac. The first time, Settings asks you to download it (about 5.2 GB). After that, Settings shows 준비됨. The first suggestion after you open the app can take a few seconds while the model loads. The HUD says **Loading the model…** for that press, then **Finding…** after that. The sentence stays on this Mac. This does not need Apple Intelligence, so it runs on macOS 14 as well as later versions.
+**Gemma 4** is the default. It runs Gemma 4 E4B on this Mac. The first time, Settings asks you to download it (about 5.2 GB). After that, Settings shows Ready. The first suggestion after you open the app can take a few seconds while the model loads. The HUD says **Loading the model…** for that press, then **Finding…** after that. The sentence stays on this Mac. This does not need Apple Intelligence, so it runs on macOS 14 as well as later versions.
 
 **API** sends the sentence to an OpenAI-compatible chat API. Settings takes a base URL, an API key, and a model name. The base URL is the provider's `/v1` root. OpenAI, OpenRouter, Groq, and Together all use that shape. The default is OpenAI's `https://api.openai.com/v1` with `gpt-4o-mini`.
 
