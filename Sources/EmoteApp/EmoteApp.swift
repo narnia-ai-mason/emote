@@ -243,13 +243,9 @@ private func humanMessage(for error: Error) -> String {
     return "Couldn't get recommendations"
   }
   switch error {
-  case .emptyQuery:
-    return "Nothing to recommend"
   case .missingAPIKey:
     return "Add your API key in Settings"
   case .notConfigured(let detail):
-    return detail
-  case .onDeviceUnavailable(let detail):
     return detail
   case .requestFailed(let detail) where detail.contains("401"):
     return "That API key isn't valid"
@@ -261,7 +257,7 @@ private func humanMessage(for error: Error) -> String {
   where detail.localizedCaseInsensitiveContains("privacy")
     || detail.localizedCaseInsensitiveContains("data policy"):
     return "This model is blocked on your account"
-  case .insufficientCandidates, .emptyModelResponse, .invalidModelResponse, .requestFailed:
+  case .insufficientCandidates, .emptyModelResponse, .requestFailed:
     return "Couldn't get recommendations"
   }
 }

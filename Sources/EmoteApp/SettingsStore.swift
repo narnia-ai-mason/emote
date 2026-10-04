@@ -22,10 +22,6 @@ final class SettingsStore: ObservableObject {
     didSet { UserDefaults.standard.set(apiModel, forKey: Keys.apiModel) }
   }
 
-  @Published var model: String {
-    didSet { UserDefaults.standard.set(model, forKey: Keys.model) }
-  }
-
   @Published var tone: String {
     didSet {
       let resolved = SuggestionTone.resolve(tone).rawValue
@@ -41,31 +37,6 @@ final class SettingsStore: ObservableObject {
     didSet { persistHotkey() }
   }
 
-  @Published var temperature: Double {
-    didSet {
-      let clamped = OpenRouterEmojiRecommender.clampedTemperature(temperature)
-      if clamped != temperature {
-        temperature = clamped
-        return
-      }
-      UserDefaults.standard.set(clamped, forKey: Keys.temperature)
-    }
-  }
-
-  var fallbackModels: [String] {
-    let stored = UserDefaults.standard.string(forKey: Keys.fallbacks)?
-      .split(separator: ",")
-      .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-      .filter { !$0.isEmpty } ?? []
-    if !stored.isEmpty {
-      return stored
-    }
-    if model != OpenRouterEmojiRecommender.defaultModel {
-      return [OpenRouterEmojiRecommender.defaultModel]
-    }
-    return []
-  }
-
   private init() {
     let defaults = UserDefaults.standard
     if let storedEngine = defaults.string(forKey: Keys.engine),
@@ -78,7 +49,6 @@ final class SettingsStore: ObservableObject {
     apiKey = defaults.string(forKey: Keys.apiKey) ?? ""
     apiBaseURL = defaults.string(forKey: Keys.apiBaseURL) ?? APIEmojiEngine.defaultBaseURL
     apiModel = defaults.string(forKey: Keys.apiModel) ?? APIEmojiEngine.defaultModel
-    model = defaults.string(forKey: Keys.model) ?? OpenRouterEmojiRecommender.defaultModel
     tone = SuggestionTone.resolve(defaults.string(forKey: Keys.tone)).rawValue
     if let data = defaults.data(forKey: Keys.hotkey),
       let stored = try? JSONDecoder().decode(HotkeyBinding.self, from: data)
@@ -86,13 +56,6 @@ final class SettingsStore: ObservableObject {
       hotkey = stored
     } else {
       hotkey = .default
-    }
-    if defaults.object(forKey: Keys.temperature) != nil {
-      temperature = OpenRouterEmojiRecommender.clampedTemperature(
-        defaults.double(forKey: Keys.temperature)
-      )
-    } else {
-      temperature = OpenRouterEmojiRecommender.defaultTemperature
     }
   }
 
@@ -107,10 +70,7 @@ final class SettingsStore: ObservableObject {
     static let apiKey = "emote.apiKey"
     static let apiBaseURL = "emote.apiBaseURL"
     static let apiModel = "emote.apiModel"
-    static let model = "emote.model"
     static let tone = "emote.tone"
     static let hotkey = "emote.hotkey"
-    static let temperature = "emote.temperature"
-    static let fallbacks = "emote.fallbacks"
   }
 }

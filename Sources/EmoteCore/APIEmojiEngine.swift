@@ -32,9 +32,7 @@ public enum APIEmojiEngine {
           ChatMessage(role: "user", content: situation.message),
         ],
         temperature: temperature,
-        maxTokens: 160,
-        disableReasoning: false,
-        sortByLatency: false
+        maxTokens: 160
       )
     )
     let recommendations = EmojiResponseParser.recommendations(from: response.content, limit: 10)

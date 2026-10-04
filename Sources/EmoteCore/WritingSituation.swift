@@ -14,8 +14,6 @@ public struct WritingSituation: Equatable, Sendable {
   public var span: String
   public var tokens: [String]
   public var tone: String
-  /// Short word selections stay on CLDR, then embedding, then the on-device model.
-  public var usesWordCascade: Bool
 
   public static let headingInstructions = """
     You recommend emojis a person would place before a section heading. Pick a representative mark for the section's topic, not the emotion of the following sentence. If the next sentence is empty, use only the heading. Match the requested tone. Reply as JSON with key emojis: 5 to 10 distinct emoji characters.
@@ -89,8 +87,7 @@ public struct WritingSituation: Equatable, Sendable {
       message: message,
       span: heading,
       tokens: tokens(in: heading),
-      tone: tone,
-      usesWordCascade: false
+      tone: tone
     )
   }
 
@@ -105,8 +102,7 @@ public struct WritingSituation: Equatable, Sendable {
       message: message,
       span: spoken,
       tokens: tokens(in: spoken),
-      tone: tone,
-      usesWordCascade: false
+      tone: tone
     )
   }
 
@@ -123,8 +119,7 @@ public struct WritingSituation: Equatable, Sendable {
       message: lines.joined(separator: "\n"),
       span: span,
       tokens: tokens(in: span),
-      tone: tone,
-      usesWordCascade: true
+      tone: tone
     )
   }
 

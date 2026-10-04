@@ -13,14 +13,6 @@ public struct TextFocus: Equatable, Sendable {
     case replace(utf16: Range<Int>)
   }
 
-  public var query: RetrievalQuery {
-    RetrievalQuery(
-      focus: focus,
-      context: kind == .word ? sentence : nil,
-      kind: kind
-    )
-  }
-
   public static func resolve(text: String, selectedUTF16: Range<Int>) -> TextFocus? {
     let end = text.utf16.count
     let lower = min(max(selectedUTF16.lowerBound, 0), end)

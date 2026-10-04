@@ -21,12 +21,8 @@ let package = Package(
   targets: [
     .target(
       name: "EmoteCore",
-      exclude: [
-        "Resources/CLDR-LICENSE.txt",
-      ],
       resources: [
         .copy("Resources/emoji-test-17.0.txt"),
-        .copy("Resources/emoji-cldr-48.2.tsv"),
       ]
     ),
     .target(

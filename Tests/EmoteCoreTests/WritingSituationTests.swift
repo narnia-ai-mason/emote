@@ -7,7 +7,6 @@ final class WritingSituationTests: XCTestCase {
     let situation = WritingSituation.resolve(text: text, selectedUTF16: 0..<0, tone: "dry")
 
     XCTAssertEqual(situation?.mode, .heading)
-    XCTAssertEqual(situation?.usesWordCascade, false)
     XCTAssertEqual(
       situation?.message,
       """
@@ -99,7 +98,6 @@ final class WritingSituationTests: XCTestCase {
 
     XCTAssertEqual(situation?.mode, .word)
     XCTAssertEqual(situation?.span, "신발")
-    XCTAssertEqual(situation?.usesWordCascade, true)
     XCTAssertTrue(situation?.message.contains("<word>신발</word>") == true)
   }
 
@@ -111,7 +109,6 @@ final class WritingSituationTests: XCTestCase {
 
     XCTAssertEqual(situation?.mode, .word)
     XCTAssertEqual(situation?.span, "젖은 신발")
-    XCTAssertEqual(situation?.usesWordCascade, true)
     XCTAssertTrue(situation?.message.contains("<sentence>어제 젖은 신발을 말렸다</sentence>") == true)
   }
 
@@ -124,30 +121,7 @@ final class WritingSituationTests: XCTestCase {
     )
 
     XCTAssertEqual(situation?.mode, .sentence)
-    XCTAssertEqual(situation?.usesWordCascade, false)
     XCTAssertTrue(situation?.message.hasPrefix("<sentence>") == true)
-  }
-}
-
-final class CldrKeywordIndexTests: XCTestCase {
-  func testKoreanKeywordsMatchRainAndShoesAndMissLeavingWork() throws {
-    let bundled = CldrKeywordIndex.loadBundled()
-    let rain = try XCTUnwrap(bundled.match(tokens: ["비"]))
-    let shoes = try XCTUnwrap(bundled.match(tokens: ["신발"]))
-
-    XCTAssertTrue(rain.contains("🌧"))
-    XCTAssertTrue(rain.contains("☔"))
-    XCTAssertTrue(shoes.contains("👟"))
-    XCTAssertNil(bundled.match(tokens: ["퇴근"]))
-  }
-
-  func testAPhraseMatchesOnlyWhenEveryTokenHits() {
-    let index = CldrKeywordIndex(
-      tsv: "👟\trunning shoe\tshoe | sneaker\t운동화\t신발 | 운동화\n☔\train\train\t우산\t비 | 우산\n"
-    )
-
-    XCTAssertEqual(index.match(tokens: ["신발", "비"]), ["👟", "☔"])
-    XCTAssertNil(index.match(tokens: ["신발", "퇴근"]))
   }
 }
 

@@ -112,7 +112,7 @@ struct EmoteCLI {
     var arguments = arguments
     var tone: String?
     var selecting = false
-    var engine: RecommendationEngine?
+    var engine = RecommendationEngine.default
     while let option = arguments.first, option.hasPrefix("--") {
       switch option {
       case "--tone":
@@ -177,45 +177,10 @@ struct EmoteCLI {
         let elapsed = ContinuousClock.now - started
         print("api \(elapsed.milliseconds) ms")
         print(recommendations.map(\.emoji).joined(separator: " "))
-        return
-      }
-      let outcome = try await SituationRecommender(rank: embedRank).recommend(situation)
-      let elapsed = ContinuousClock.now - started
-      print("\(outcome.stage.rawValue) \(elapsed.milliseconds) ms")
-      print(outcome.recommendations.map(\.emoji).joined(separator: " "))
-      if !outcome.embedding.isEmpty {
-        let shown = outcome.embedding.prefix(5).map { String(format: "%@ %.3f", $0.emoji, $0.score) }
-        print("embedding \(shown.joined(separator: "  "))")
       }
     } catch {
       writeToStandardError("Error: \(error.localizedDescription)")
       exit(EXIT_FAILURE)
-    }
-  }
-
-  private static func embedRank(_ query: String) async -> [RankedEmoji] {
-    let python = ProcessInfo.processInfo.environment["EMOTE_EMBED_PYTHON"] ?? "python3"
-    let script = FileManager.default.currentDirectoryPath + "/scripts/embed_rank.py"
-    guard FileManager.default.fileExists(atPath: script) else { return [] }
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-    process.arguments = [python, script, query]
-    let output = Pipe()
-    process.standardOutput = output
-    process.standardError = FileHandle.standardError
-    do {
-      try process.run()
-      process.waitUntilExit()
-    } catch {
-      return []
-    }
-    guard process.terminationStatus == 0 else { return [] }
-    let data = output.fileHandleForReading.readDataToEndOfFile()
-    let text = String(decoding: data, as: UTF8.self)
-    return text.split(separator: "\n").compactMap { line in
-      let fields = line.split(separator: "\t")
-      guard fields.count == 2, let score = Double(fields[1]) else { return nil }
-      return RankedEmoji(emoji: String(fields[0]), score: score)
     }
   }
 
