@@ -2,6 +2,7 @@ import EmoteCore
 import Foundation
 import HuggingFace
 import MLX
+import MLXGuidedGeneration
 import MLXHuggingFace
 import MLXLMCommon
 import MLXVLM
@@ -9,7 +10,11 @@ import Tokenizers
 
 public enum GemmaEmojiEngine {
   private static let cache = GemmaModelCache()
+  private static let schema = EmojiSchema()
   private static let loadedFlag = LoadedFlag()
+  private static let emojiSchema = """
+    {"type":"object","properties":{"emojis":{"type":"array","minItems":5,"maxItems":10,"items":{"type":"string"}}},"required":["emojis"],"additionalProperties":false}
+    """
 
   public static func isModelLoaded() -> Bool {
     loadedFlag.get()
@@ -24,68 +29,35 @@ public enum GemmaEmojiEngine {
     }
     let container = try await cache.load(directory: directory)
     loadedFlag.set()
-    let prompt = situation.instructions + "\nDo not think out loud.\n\n" + situation.message
     let reply = try await container.perform { (context: ModelContext) -> String in
       let prepared = try await context.processor.prepare(
         input: UserInput(
-          prompt: prompt,
+          chat: [
+            .system(situation.instructions),
+            .user(situation.message),
+          ],
           additionalContext: ["enable_thinking": false]
         )
       )
-      let suffix = GemmaEmojiEngine.generationSuffix(prepared: prepared, tokenizer: context.tokenizer)
-      let extraIDs = context.tokenizer.encode(text: suffix, addSpecialTokens: false)
-      let input = GemmaEmojiEngine.appending(extraIDs, to: prepared)
-      let stream = try generate(
-        input: input,
-        parameters: GenerateParameters(maxTokens: 80, temperature: 0.2),
-        context: context
-      )
+      let guide = try schema.guide(tokenizer: context.tokenizer, jsonSchema: emojiSchema)
       var text = ""
-      for await event in stream {
-        if let chunk = event.chunk {
-          text += chunk
-        }
+      try GuidedGenerationLoop.run(
+        input: prepared,
+        context: context,
+        constraint: guide.constraint,
+        maxTokens: 160,
+        vocabSize: guide.vocabSize
+      ) { delta in
+        text += delta
+        return true
       }
       return text
     }
-    let recommendations = EmojiResponseParser.recommendations(
-      from: "{\"emojis\":[" + reply,
-      limit: 10
-    )
+    let recommendations = EmojiResponseParser.recommendations(from: reply, limit: 10)
     guard !recommendations.isEmpty else {
       throw EmojiRecommendationError.insufficientCandidates(0)
     }
     return recommendations
-  }
-
-  private static func generationSuffix(prepared: LMInput, tokenizer: any MLXLMCommon.Tokenizer) -> String {
-    let rendered = tokenizer.decode(
-      tokenIds: prepared.text.tokens.asArray(Int.self),
-      skipSpecialTokens: false
-    )
-    var suffix = ""
-    if !rendered.contains("<|turn>model") {
-      suffix += "<|turn>model\n"
-    }
-    suffix += "<|channel>thought\n<channel|>{\"emojis\":["
-    return suffix
-  }
-
-  private static func appending(_ tokenIDs: [Int], to prepared: LMInput) -> LMInput {
-    let tokens = prepared.text.tokens
-    let extra = MLXArray(tokenIDs.map(Int32.init))
-    let merged: MLXArray
-    if tokens.ndim == 2 {
-      merged = concatenated([tokens, extra.reshaped(1, tokenIDs.count)], axis: 1)
-    } else {
-      merged = concatenated([tokens, extra], axis: 0)
-    }
-    return LMInput(
-      text: .init(tokens: merged),
-      image: prepared.image,
-      video: prepared.video,
-      audio: prepared.audio
-    )
   }
 }
 
@@ -104,6 +76,39 @@ enum GemmaMetalLibrary {
     throw EmojiRecommendationError.notConfigured(
       "Gemma 4 could not start. The Metal library is missing."
     )
+  }
+}
+
+private final class EmojiSchema: @unchecked Sendable {
+  private let lock = NSLock()
+  private var grammarTokenizer: GrammarTokenizer?
+  private var vocabSize = 0
+
+  func guide(tokenizer: any MLXLMCommon.Tokenizer, jsonSchema: String) throws -> (
+    constraint: GrammarConstraint, vocabSize: Int
+  ) {
+    lock.lock()
+    defer { lock.unlock() }
+    let compiledTokenizer: GrammarTokenizer
+    if let grammarTokenizer {
+      compiledTokenizer = grammarTokenizer
+    } else {
+      let vocab = TokenizerVocabExtractor.extractForGrammar(from: tokenizer)
+      compiledTokenizer = try GrammarTokenizer(
+        vocab: vocab.vocab,
+        vocabType: vocab.vocabType,
+        eosTokenId: Int32(tokenizer.eosTokenId ?? 0)
+      )
+      grammarTokenizer = compiledTokenizer
+      vocabSize = compiledTokenizer.vocabSize
+    }
+    let constraint = try GrammarConstraint(
+      tokenizer: compiledTokenizer,
+      jsonSchema: jsonSchema,
+      fastForward: true,
+      hostTokenizer: tokenizer
+    )
+    return (constraint, vocabSize)
   }
 }
 
