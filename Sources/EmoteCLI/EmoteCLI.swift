@@ -220,7 +220,7 @@ struct EmoteCLI {
   }
 
   private static let usage =
-    "Usage: EmoteCLI [--engine gemma4|api] [--model <model>] [--tone neutral|dry|warm|joyful] [--context \"<sentence>\"] \"<keyword>\""
+    "Usage: EmoteCLI [--engine gemma4|api] [--model <model>] [--tone neutral|dry|warm|playful] [--context \"<sentence>\"] \"<keyword>\""
 
   private static func parseEngine(_ raw: String) -> RecommendationEngine? {
     switch raw.lowercased() {

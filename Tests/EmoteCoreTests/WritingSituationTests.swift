@@ -44,6 +44,12 @@ final class WritingSituationTests: XCTestCase {
     XCTAssertEqual(situation?.span, "오늘 퇴근길에 갑자기 비가 쏟아져서 신발까지 다 젖었어.")
   }
 
+  func testASavedJoyfulToneBecomesPlayful() {
+    let situation = WritingSituation.resolve(text: "이직 준비", selectedUTF16: 0..<0, tone: "joyful")
+
+    XCTAssertTrue(situation?.message.contains("<tone>playful</tone>") == true)
+  }
+
   func testAnUnknownToneBecomesNeutral() {
     let situation = WritingSituation.resolve(text: "이직 준비", selectedUTF16: 0..<0, tone: "warm and light")
 

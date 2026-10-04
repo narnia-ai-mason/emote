@@ -58,7 +58,7 @@ Tab or the arrow keys move. Enter inserts. Esc dismisses.
 
 Where the caret is changes the request. At the start of a sentence with no ending punctuation, Emote treats that line as a heading and also reads the first sentence on the next line, if there is one. After a finished sentence, or inside one, it suggests for that sentence. In a short word, it suggests for that word. A longer selection is treated as a sentence. Word boundaries follow macOS, so Japanese, Chinese, and other languages without spaces still focus on the word by the cursor.
 
-Settings has four tones: neutral, dry, warm, and joyful. Tone changes the mood of the list. It does not change what the sentence is about.
+Settings has four tones: neutral, dry, warm, and playful. Tone changes the mood of the list. It does not change what the sentence is about.
 
 Fewer than five suggestions is fine. Press the hotkey again if you want another set.
 
