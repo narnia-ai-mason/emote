@@ -58,6 +58,8 @@ Tab or the arrow keys move. Enter inserts. Esc dismisses.
 
 Where the caret is changes the request. At the start of a sentence with no ending punctuation, Emote treats that line as a heading and also reads the first sentence on the next line, if there is one. A markup heading is a heading wherever the caret sits on that line: Markdown `#` through `######`, a title on an `=` or `-` underline, AsciiDoc `=`, and HTML `<h1>` through `<h6>`. The marker is left out of the request. After a finished sentence, or inside one, it suggests for that sentence. In a short word, it suggests for that word. A longer selection is treated as a sentence. Word boundaries follow macOS, so Japanese, Chinese, and other languages without spaces still focus on the word by the cursor.
 
+In a terminal, Emote works with Neovim. It reads the buffer, cursor, and mode over Neovim's own socket, so line numbers, wrapped lines, and the terminal app don't matter, and the emoji goes into the buffer without passing through completion plugins. In Normal mode, a cursor on the last character of a word or sentence means after it; a Visual selection is the span. Other terminal programs, and Vim or Neovim over SSH, only get what the terminal shows.
+
 Settings has four tones: neutral, dry, warm, and playful. Tone changes the mood of the list. It does not change what the sentence is about.
 
 Fewer than five suggestions is fine. Press the hotkey again if you want another set.

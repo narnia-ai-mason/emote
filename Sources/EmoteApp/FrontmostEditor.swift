@@ -15,6 +15,8 @@ enum FrontmostEditor {
     var following: String?
     var application: NSRunningApplication?
     var caret: CaretDebug
+    /// Set when the text is a terminal Neovim's buffer, which takes the emoji over RPC.
+    var neovim: Neovim.Target? = nil
 
     /// The caret is past the text the app shares, so `text` says nothing about the caret.
     var caretIsOutsideText: Bool { caret.basis == .truncated }
@@ -23,6 +25,7 @@ enum FrontmostEditor {
 
   private static var lastExternalApp: NSRunningApplication?
   private static var memoryTimer: Timer?
+  private static var neovimTimer: Timer?
 
   static func startRemembering() {
     guard memoryTimer == nil else {
@@ -33,6 +36,10 @@ enum FrontmostEditor {
       Task { @MainActor in
         rememberExternalApp()
       }
+    }
+    Neovim.hookAll()
+    neovimTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in
+      Neovim.hookAll()
     }
   }
 
@@ -77,11 +84,23 @@ enum FrontmostEditor {
   }
 
   static func anchorRect(in snapshot: Snapshot, focus: TextFocus) -> CGRect? {
-    bounds(snapshot.element, utf16: snapshot.projection.source(focus.anchorUTF16))
+    guard snapshot.neovim == nil else { return snapshot.caretScreenRect }
+    return bounds(snapshot.element, utf16: snapshot.projection.source(focus.anchorUTF16))
       ?? snapshot.caretScreenRect
   }
 
   static func apply(emoji: String, to snapshot: Snapshot, focus: TextFocus) {
+    if let target = snapshot.neovim {
+      let range: Range<Int>
+      switch focus.insertion {
+      case .insert(let utf16): range = utf16..<utf16
+      case .replace(let utf16): range = utf16
+      }
+      if !Neovim.insert(emoji, replacing: range, in: target) {
+        NSSound.beep()
+      }
+      return
+    }
     if case .replace(let utf16) = focus.insertion, utf16 != snapshot.selectedUTF16 {
       _ = setSelectedRange(snapshot.element, snapshot.projection.source(utf16))
     }
@@ -97,10 +116,74 @@ enum FrontmostEditor {
 
 private func readSnapshot(from app: NSRunningApplication) -> FrontmostEditor.Snapshot? {
   let appElement = AXUIElementCreateApplication(app.processIdentifier)
-  guard let focused = copyElement(appElement, kAXFocusedUIElementAttribute) else {
+  let focused = copyElement(appElement, kAXFocusedUIElementAttribute)
+  if Neovim.isTerminal(app) {
+    let screen = focused.flatMap { textSource(from: $0)?.text }
+    if let target = Neovim.target(in: app, screen: screen) {
+      guard target.state.acceptsEmoji else { return nil }
+      return neovimSnapshot(target, application: app, appElement: appElement, focused: focused)
+    }
+  }
+  guard let focused else {
     return nil
   }
   return snapshot(of: focused, application: app)
+}
+
+private func neovimSnapshot(
+  _ target: Neovim.Target,
+  application: NSRunningApplication,
+  appElement: AXUIElement,
+  focused: AXUIElement?
+) -> FrontmostEditor.Snapshot {
+  let state = target.state
+  let text = state.text
+  let selection = state.selectedUTF16
+  let debug = CaretDebug(
+    basis: .neovim,
+    resolved: selection.lowerBound,
+    resolvedLength: selection.count,
+    line: state.line,
+    textLength: text.utf16.count,
+    head: String(text.prefix(120)).replacingOccurrences(of: "\n", with: "\\n"),
+    around: snippet(text, around: selection.lowerBound)
+  )
+  writeCaretDebug(debug)
+  return FrontmostEditor.Snapshot(
+    element: focused ?? appElement,
+    projection: ProjectedText(text: text),
+    selectedUTF16: selection,
+    caretScreenRect: terminalCaretRect(state, app: appElement, focused: focused),
+    following: nil,
+    application: application,
+    caret: debug,
+    neovim: target
+  )
+}
+
+/// The terminal's own cursor rectangle when its accessibility has one. Otherwise Neovim's grid
+/// cell, scaled to the terminal view, or to the window below its title bar.
+private func terminalCaretRect(_ state: NeovimState, app: AXUIElement, focused: AXUIElement?) -> CGRect? {
+  if let focused, let reported = selectedUTF16Range(focused),
+    let rect = bounds(focused, utf16: reported.lowerBound..<reported.lowerBound)
+  {
+    return rect
+  }
+  let window = copyElement(app, kAXFocusedWindowAttribute).flatMap(axFrame)
+  var grid = focused.flatMap(axFrame)
+  if let window, grid.map({ $0.height < 40 }) ?? true {
+    grid = CGRect(x: window.minX, y: window.minY + 28, width: window.width, height: window.height - 28)
+  }
+  guard let grid, state.columns > 0, state.rows > 0 else { return nil }
+  let width = grid.width / CGFloat(state.columns)
+  let height = grid.height / CGFloat(state.rows)
+  let cell = CGRect(
+    x: grid.minX + CGFloat(state.screenCol - 1) * width,
+    y: grid.minY + CGFloat(state.screenRow - 1) * height,
+    width: max(width, 2),
+    height: height
+  )
+  return cocoaRect(fromAX: cell)
 }
 
 private struct TextSource {

@@ -82,6 +82,8 @@ public struct CaretDebug: Codable, Equatable, Sendable {
     case truncated
     /// Text read around a caret that lies past `AXValue`, through `AXStringForRange`.
     case window
+    /// A terminal's Neovim buffer and cursor, read over Neovim's RPC socket.
+    case neovim
   }
 
   public init(
