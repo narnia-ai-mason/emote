@@ -4,7 +4,13 @@ import SwiftUI
 
 @MainActor
 final class HUDController: NSObject {
+  enum Resolution {
+    case selected(emoji: String, index: Int)
+    case cancelled
+  }
+
   var onDismiss: (() -> Void)?
+  var onResolution: ((Resolution, [String]) -> Void)?
 
   private var panel: NSPanel?
   private var localMonitor: Any?
@@ -18,6 +24,7 @@ final class HUDController: NSObject {
     selectedIndex = 0
     recommendations = []
     onCommit = nil
+    onResolution = nil
     self.anchor = anchor
     present(
       HUDView(
@@ -47,6 +54,7 @@ final class HUDController: NSObject {
   func show(message: String, anchor: CGRect?) {
     recommendations = []
     onCommit = nil
+    onResolution = nil
     self.anchor = anchor
     present(
       HUDView(
@@ -61,6 +69,11 @@ final class HUDController: NSObject {
   }
 
   func hide() {
+    resolve(.cancelled)
+    dismiss()
+  }
+
+  private func dismiss() {
     let dismiss = onDismiss
     HotKeyMonitor.shared.unregisterHUD()
     if let localMonitor {
@@ -226,8 +239,18 @@ final class HUDController: NSObject {
     }
     let recommendation = recommendations[index]
     let commit = onCommit
-    hide()
+    resolve(.selected(emoji: recommendation.emoji, index: index))
+    dismiss()
     commit?(recommendation)
+  }
+
+  private func resolve(_ resolution: Resolution) {
+    guard !recommendations.isEmpty else { return }
+    let emojis = recommendations.map(\.emoji)
+    let handler = onResolution
+    onResolution = nil
+    recommendations = []
+    handler?(resolution, emojis)
   }
 }
 

@@ -2,6 +2,7 @@ import AppKit
 import Carbon.HIToolbox
 import EmoteCore
 import EmoteGemma
+import os
 import SwiftUI
 
 @main
@@ -103,6 +104,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
   }
 
+  func applicationWillTerminate(_ notification: Notification) {
+    hud.hide()
+  }
+
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
     AppChrome.resignToMenuBarIfNeeded()
     return false
@@ -122,17 +127,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     hud.hide()
 
     guard FrontmostEditor.ensureTrusted() else {
-      AppChrome.showSettings()
-      hud.show(message: "Allow Accessibility in Settings", anchor: nil)
+      showFailure(
+        "Allow Accessibility in Settings",
+        anchor: nil,
+        application: FrontmostEditor.currentExternalApp(),
+        openSettings: true
+      )
       return
     }
 
     let settings = SettingsStore.shared
 
-    guard let snapshot = FrontmostEditor.read(),
+    let snapshot = FrontmostEditor.read()
+    if let snapshot, snapshot.caretIsOutsideText {
+      showFailure(
+        "This app hides text this far down",
+        anchor: snapshot.caretScreenRect,
+        snapshot: snapshot
+      )
+      return
+    }
+
+    guard let snapshot,
       let focus = TextFocus.resolve(text: snapshot.text, selectedUTF16: snapshot.selectedUTF16)
     else {
-      hud.show(message: "Couldn't read the text", anchor: nil)
+      showFailure(
+        "Couldn't read the text",
+        anchor: nil,
+        application: FrontmostEditor.currentExternalApp()
+      )
       return
     }
 
@@ -140,18 +163,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let anchor = FrontmostEditor.anchorRect(in: snapshot, focus: focus)
     if settings.engine == .gemma4 {
       guard GemmaModelStore.shared.isReady else {
-        AppChrome.showSettings()
-        hud.show(message: "Download Gemma 4 in Settings", anchor: anchor)
+        showFailure(
+          "Download Gemma 4 in Settings",
+          anchor: anchor,
+          snapshot: snapshot,
+          openSettings: true
+        )
         return
       }
       guard
         let situation = WritingSituation.resolve(
           text: snapshot.text,
           selectedUTF16: snapshot.selectedUTF16,
-          tone: tone.isEmpty ? nil : tone
+          tone: tone.isEmpty ? nil : tone,
+          following: snapshot.following
         )
       else {
-        hud.show(message: "Nothing to recommend", anchor: anchor)
+        showFailure("Nothing to recommend", anchor: anchor, snapshot: snapshot)
         return
       }
       hud.showLoading(
@@ -163,17 +191,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
           let recommendations = try await GemmaEmojiEngine.recommend(situation)
           guard !Task.isCancelled else { return }
           await MainActor.run {
-            hud.show(
-              recommendations: recommendations,
-              anchor: anchor
-            ) { recommendation in
-              FrontmostEditor.apply(emoji: recommendation.emoji, to: snapshot, focus: focus)
-            }
+            self.show(
+              recommendations,
+              situation: situation,
+              anchor: anchor,
+              snapshot: snapshot,
+              focus: focus
+            )
           }
         } catch {
           guard !Task.isCancelled else { return }
+          let notice = humanMessage(for: error)
+          let detail = recommendationErrorDetail(error)
           await MainActor.run {
-            hud.show(message: humanMessage(for: error), anchor: anchor)
+            self.showFailure(
+              notice,
+              anchor: anchor,
+              situation: situation,
+              snapshot: snapshot,
+              errorDetail: detail == notice ? nil : detail
+            )
           }
         }
       }
@@ -184,22 +221,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       let situation = WritingSituation.resolve(
         text: snapshot.text,
         selectedUTF16: snapshot.selectedUTF16,
-        tone: tone.isEmpty ? nil : tone
+        tone: tone.isEmpty ? nil : tone,
+        following: snapshot.following
       )
     else {
-      hud.show(message: "Nothing to recommend", anchor: anchor)
+      showFailure("Nothing to recommend", anchor: anchor, snapshot: snapshot)
       return
     }
     let key = settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !key.isEmpty else {
-      AppChrome.showSettings()
-      hud.show(message: "Add your API key in Settings", anchor: anchor)
+      showFailure(
+        "Add your API key in Settings",
+        anchor: anchor,
+        situation: situation,
+        snapshot: snapshot,
+        openSettings: true
+      )
       return
     }
     let model = settings.apiModel.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !model.isEmpty else {
-      AppChrome.showSettings()
-      hud.show(message: "Set a model name in Settings", anchor: anchor)
+      showFailure(
+        "Set a model name in Settings",
+        anchor: anchor,
+        situation: situation,
+        snapshot: snapshot,
+        openSettings: true
+      )
       return
     }
     hud.showLoading(anchor: anchor)
@@ -214,21 +262,141 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         guard !Task.isCancelled else { return }
         await MainActor.run {
-          hud.show(
-            recommendations: recommendations,
-            anchor: anchor
-          ) { recommendation in
-            FrontmostEditor.apply(emoji: recommendation.emoji, to: snapshot, focus: focus)
-          }
+          self.show(
+            recommendations,
+            situation: situation,
+            anchor: anchor,
+            snapshot: snapshot,
+            focus: focus
+          )
         }
       } catch {
         guard !Task.isCancelled else { return }
+        let notice = humanMessage(for: error)
+        let detail = recommendationErrorDetail(error)
         await MainActor.run {
-          hud.show(message: humanMessage(for: error), anchor: anchor)
+          self.showFailure(
+            notice,
+            anchor: anchor,
+            situation: situation,
+            snapshot: snapshot,
+            errorDetail: detail == notice ? nil : detail
+          )
         }
       }
     }
   }
+
+  private func show(
+    _ recommendations: [EmojiRecommendation],
+    situation: WritingSituation,
+    anchor: CGRect?,
+    snapshot: FrontmostEditor.Snapshot,
+    focus: TextFocus
+  ) {
+    hud.onResolution = { resolution, emojis in
+      switch resolution {
+      case .selected(let emoji, let index):
+        recordRecommendation(
+          situation: situation,
+          recommendations: emojis,
+          outcome: .selected,
+          selected: emoji,
+          selectedIndex: index,
+          appName: snapshot.application?.localizedName,
+          appBundleIdentifier: snapshot.application?.bundleIdentifier,
+          caret: snapshot.caret
+        )
+      case .cancelled:
+        recordRecommendation(
+          situation: situation,
+          recommendations: emojis,
+          outcome: .cancelled,
+          appName: snapshot.application?.localizedName,
+          appBundleIdentifier: snapshot.application?.bundleIdentifier,
+          caret: snapshot.caret
+        )
+      }
+    }
+    hud.show(recommendations: recommendations, anchor: anchor) { recommendation in
+      FrontmostEditor.apply(emoji: recommendation.emoji, to: snapshot, focus: focus)
+    }
+  }
+
+  private func showFailure(
+    _ notice: String,
+    anchor: CGRect?,
+    situation: WritingSituation? = nil,
+    snapshot: FrontmostEditor.Snapshot? = nil,
+    application: NSRunningApplication? = nil,
+    errorDetail: String? = nil,
+    openSettings: Bool = false
+  ) {
+    if openSettings {
+      AppChrome.showSettings()
+    }
+    let app = snapshot?.application ?? application
+    recordRecommendation(
+      situation: situation,
+      recommendations: [],
+      outcome: .failed,
+      appName: app?.localizedName,
+      appBundleIdentifier: app?.bundleIdentifier,
+      notice: notice,
+      errorDetail: errorDetail,
+      caret: snapshot?.caret
+    )
+    hud.show(message: notice, anchor: anchor)
+  }
+}
+
+private let recommendationLog = Logger(subsystem: "com.minsikseo.emote", category: "history")
+
+private func recordRecommendation(
+  situation: WritingSituation?,
+  recommendations: [String],
+  outcome: RecommendationRecord.Outcome,
+  selected: String? = nil,
+  selectedIndex: Int? = nil,
+  appName: String? = nil,
+  appBundleIdentifier: String? = nil,
+  notice: String? = nil,
+  errorDetail: String? = nil,
+  caret: CaretDebug? = nil
+) {
+  let record = RecommendationRecord(
+    mode: situation?.mode,
+    message: situation?.message,
+    recommendations: recommendations,
+    outcome: outcome,
+    selected: selected,
+    selectedIndex: selectedIndex,
+    appName: appName,
+    appBundleIdentifier: appBundleIdentifier,
+    notice: notice,
+    errorDetail: errorDetail,
+    caret: caret
+  )
+  do {
+    try RecommendationHistory.append(record, to: RecommendationHistory.defaultFileURL())
+  } catch {
+    recommendationLog.error(
+      "Failed to write recommendation history: \(error.localizedDescription, privacy: .public)"
+    )
+  }
+}
+
+private func recommendationErrorDetail(_ error: Error) -> String? {
+  let text: String?
+  if let error = error as? EmojiRecommendationError {
+    text = error.errorDescription
+  } else {
+    text = error.localizedDescription
+  }
+  guard let text, !text.isEmpty else {
+    return nil
+  }
+  return text
 }
 
 private func clipped(_ text: String, limit: Int) -> String {
