@@ -35,7 +35,7 @@ if ! xcrun -sdk macosx metal --version >/dev/null 2>&1; then
     echo "No mlx.metallib was found. Install the Metal toolchain, then run this again." >&2
     exit 1
   fi
-  bindir="$(cd "$root" && swift build --show-bin-path)"
+  bindir="$(cd "$root" && swift build --build-system native --show-bin-path)"
   cp "$out" "$bindir/mlx.metallib"
   echo "$out"
   exit 0
@@ -75,6 +75,6 @@ if [ "$needs_link" -eq 1 ]; then
   xcrun -sdk macosx metal -mmacosx-version-min=14.0 "$air_dir"/*.air -o "$out"
 fi
 
-bindir="$(cd "$root" && swift build --show-bin-path)"
+bindir="$(cd "$root" && swift build --build-system native --show-bin-path)"
 cp "$out" "$bindir/mlx.metallib"
 echo "$out"

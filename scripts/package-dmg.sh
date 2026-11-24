@@ -27,7 +27,7 @@ wait_for_file() {
   [ -f "$file" ]
 }
 
-swift build -c release --product EmoteApp
+swift build --build-system native -c release --product EmoteApp
 ./scripts/build-mlx-metallib.sh
 
 rm -rf "$root" "$rw" "$dmg"

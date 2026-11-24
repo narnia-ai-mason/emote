@@ -2,6 +2,18 @@
 
 Each version has a `v` tag. Builds 1.4.4 through 1.4.10 were test builds and were never tagged or released.
 
+## 1.5.0 — 2026-11-24
+
+### Changed
+
+- Local Gemma 4 recommendations now run as a single prefill forward pass instead of JSON text generation, cutting median latency roughly 8x (~240ms) and eliminating JSON parsing failures.
+- Next-token logits are normalized strictly over single-token catalog emojis (1,135 entries, merging variation-selector and leading-space variants), filtered by a 0.5% probability threshold, and sampled without replacement (Gumbel-Top-k).
+- Pressing the hotkey again on the same text resamples instantly from the cached distribution while excluding already-shown emojis.
+
+### Removed
+
+- `MLXGuidedGeneration` / XGrammar dependency from `EmoteGemma`.
+
 ## 1.4.11 — 2026-10-06
 
 ### Added
