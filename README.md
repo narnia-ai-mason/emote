@@ -92,3 +92,7 @@ swift run EmoteCLI --engine api --tone warm "I just shipped"
 ```
 
 For API, set `EMOTE_API_KEY` (or `OPENAI_API_KEY`), and optionally `EMOTE_API_BASE_URL` and `EMOTE_API_MODEL`. `--model` overrides the model name.
+
+## Blog
+
+[mbaicagn](https://mbaicagn.pages.dev/)
