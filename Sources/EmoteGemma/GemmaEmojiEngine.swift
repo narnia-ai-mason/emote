@@ -185,7 +185,6 @@ private actor RecentDistributionCache {
 
   private var lastKey: String?
   private var lastDistribution: [ScoredEmoji] = []
-  private var shownEmojis: Set<String> = []
   private var updatedAt: ContinuousClock.Instant?
 
   func resampleIfRecent(for key: String) -> [EmojiRecommendation]? {
@@ -195,19 +194,7 @@ private actor RecentDistributionCache {
       !lastDistribution.isEmpty
     else { return nil }
 
-    var picked = EmojiDistributionSampler.sample(
-      from: lastDistribution,
-      excluding: shownEmojis
-    )
-    if picked.isEmpty {
-      shownEmojis.removeAll()
-      picked = EmojiDistributionSampler.sample(from: lastDistribution)
-    }
-    if shownEmojis.count + picked.count >= lastDistribution.count {
-      shownEmojis = Set(picked.map(\.emoji))
-    } else {
-      shownEmojis.formUnion(picked.map(\.emoji))
-    }
+    let picked = EmojiDistributionSampler.sample(from: lastDistribution)
     self.updatedAt = ContinuousClock.now
     return picked.isEmpty ? nil : picked
   }
@@ -216,7 +203,6 @@ private actor RecentDistributionCache {
     let picked = EmojiDistributionSampler.sample(from: distribution)
     lastKey = key
     lastDistribution = distribution
-    shownEmojis = Set(picked.map(\.emoji))
     updatedAt = ContinuousClock.now
     return picked
   }

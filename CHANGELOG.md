@@ -2,6 +2,12 @@
 
 Each version has a `v` tag. Builds 1.4.4 through 1.4.10 were test builds and were never tagged or released.
 
+## 1.5.1 — 2026-11-25
+
+### Fixed
+
+- Repeated recommendations on the same text now stay strictly within the 0.5% probability threshold instead of relaxing into low-probability tail emojis.
+
 ## 1.5.0 — 2026-11-24
 
 ### Changed

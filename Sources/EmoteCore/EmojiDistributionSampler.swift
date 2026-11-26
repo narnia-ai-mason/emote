@@ -12,7 +12,6 @@ public struct ScoredEmoji: Equatable, Sendable {
 
 public enum EmojiDistributionSampler {
   public static let defaultMinProbability = 0.005
-  public static let defaultRelaxedProbabilities = [0.0005, 0.00005]
   public static let defaultMaxCount = 10
   public static let defaultTemperature = 1.0
 
@@ -55,13 +54,11 @@ public enum EmojiDistributionSampler {
       .sorted { $0.probability > $1.probability }
   }
 
-  /// Samples without replacement (Gumbel-Top-k) from candidates clearing the probability threshold.
-  /// When repeating on the same situation with `excluding`, relaxes the threshold if the primary pool is exhausted.
+  /// Samples without replacement (Gumbel-Top-k) strictly from candidates clearing `minProbability`.
+  /// Never dips below the threshold except to return the single top candidate on a flat distribution.
   public static func sample<RNG: RandomNumberGenerator>(
     from distribution: [ScoredEmoji],
-    excluding: Set<String> = [],
     minProbability: Double = defaultMinProbability,
-    relaxedProbabilities: [Double] = defaultRelaxedProbabilities,
     maxCount: Int = defaultMaxCount,
     temperature: Double = defaultTemperature,
     using rng: inout RNG
@@ -69,26 +66,9 @@ public enum EmojiDistributionSampler {
     guard !distribution.isEmpty, maxCount > 0 else { return [] }
     let effectiveTemp = max(temperature, 1e-4)
 
-    let remaining = excluding.isEmpty
-      ? distribution
-      : distribution.filter { !excluding.contains($0.recommendation.emoji) }
-
-    var pool = remaining.filter { $0.probability >= minProbability }
-    if pool.isEmpty, !excluding.isEmpty {
-      for cutoff in relaxedProbabilities {
-        pool = remaining.filter { $0.probability >= cutoff }
-        if !pool.isEmpty { break }
-      }
-      if pool.isEmpty, !remaining.isEmpty {
-        pool = Array(remaining.prefix(maxCount))
-      }
-    }
-    if pool.isEmpty {
-      if let top = remaining.first ?? distribution.first {
-        pool = [top]
-      } else {
-        return []
-      }
+    var pool = distribution.filter { $0.probability >= minProbability }
+    if pool.isEmpty, let top = distribution.first {
+      pool = [top]
     }
 
     // Gumbel-Top-k is mathematically equivalent to sequential categorical sampling without replacement.
@@ -108,18 +88,14 @@ public enum EmojiDistributionSampler {
 
   public static func sample(
     from distribution: [ScoredEmoji],
-    excluding: Set<String> = [],
     minProbability: Double = defaultMinProbability,
-    relaxedProbabilities: [Double] = defaultRelaxedProbabilities,
     maxCount: Int = defaultMaxCount,
     temperature: Double = defaultTemperature
   ) -> [EmojiRecommendation] {
     var rng = SystemRandomNumberGenerator()
     return sample(
       from: distribution,
-      excluding: excluding,
       minProbability: minProbability,
-      relaxedProbabilities: relaxedProbabilities,
       maxCount: maxCount,
       temperature: temperature,
       using: &rng

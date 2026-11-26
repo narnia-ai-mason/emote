@@ -41,20 +41,25 @@ final class EmojiDistributionSamplerTests: XCTestCase {
     XCTAssertEqual(picked.map(\.emoji), ["☕"])
   }
 
-  func testRepeatExclusionRelaxesThresholdInsteadOfReturningEmpty() {
+  func testRepeatedSamplingNeverFallsBelowThreshold() {
     let dist = [
-      ScoredEmoji(recommendation: rec("☕"), probability: 0.9949),
-      ScoredEmoji(recommendation: rec("😌"), probability: 0.0049),
-      ScoredEmoji(recommendation: rec("🍵"), probability: 0.0002),
+      ScoredEmoji(recommendation: rec("👋"), probability: 0.60),
+      ScoredEmoji(recommendation: rec("🙋"), probability: 0.30),
+      ScoredEmoji(recommendation: rec("🙂"), probability: 0.095),
+      ScoredEmoji(recommendation: rec("🌎"), probability: 0.004),
+      ScoredEmoji(recommendation: rec("➕"), probability: 0.001),
     ]
+    let valid = Set(["👋", "🙋", "🙂"])
     var rng = SeededRNG(state: 7)
-    let second = EmojiDistributionSampler.sample(
-      from: dist,
-      excluding: ["☕"],
-      minProbability: 0.005,
-      using: &rng
-    )
-    XCTAssertEqual(second.map(\.emoji), ["😌"])
+    for _ in 0..<50 {
+      let picked = EmojiDistributionSampler.sample(
+        from: dist,
+        minProbability: 0.005,
+        using: &rng
+      )
+      XCTAssertEqual(picked.count, 3)
+      XCTAssertTrue(Set(picked.map(\.emoji)).isSubset(of: valid))
+    }
   }
 
   func testFreshFlatDistributionNeverReturnsEmpty() {
